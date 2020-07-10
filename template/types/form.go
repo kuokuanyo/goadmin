@@ -40,6 +40,7 @@ func (fo FieldOptions) Copy() FieldOptions {
 	return newOptions
 }
 
+// 判斷條件後將參數labels([]template.HTML)加入FieldOptions[k].SelectedLabel
 func (fo FieldOptions) SetSelected(val interface{}, labels []template.HTML) FieldOptions {
 
 	if valArr, ok := val.([]string); ok {
@@ -73,6 +74,7 @@ func (fo FieldOptions) SetSelected(val interface{}, labels []template.HTML) Fiel
 	return fo
 }
 
+// 對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
 func (fo FieldOptions) SetSelectedLabel(labels []template.HTML) FieldOptions {
 	for k := range fo {
 		if fo[k].Selected {
@@ -173,30 +175,40 @@ type FormField struct {
 	PostFilterFn PostFieldFilterFn `json:"-"`
 }
 
+// GetRawValue為取得該欄位的值
 func (f *FormField) GetRawValue(columns []string, v interface{}) string {
 	isJSON := len(columns) == 0
+	// AorB判斷bool返回第二個(對)或第三個參數(錯)
+	// GetValueFromDatabaseType在\modules\db\types.go
 	return modules.AorB(isJSON || modules.InArray(columns, f.Field),
+		// f.TypeName為該欄位類型(ex: INT)
+		// GetValueFromDatabaseType(從資料庫類型取得值)從SQL或JSON取得值
 		db.GetValueFromDatabaseType(f.TypeName, v, isJSON).String(), "")
 }
 
+// 將FormField(struct)的值更新後回傳
 func (f *FormField) UpdateValue(id, val string, res map[string]interface{}, sql *db.SQL) *FormField {
 	return f.updateValue(id, val, res, PostTypeUpdate, sql)
 }
 
+// UpdateDefaultValue將預設值更新後回傳FormField(struct)
 func (f *FormField) UpdateDefaultValue(sql *db.SQL) *FormField {
-	f.Value = f.Default
+	f.Value = f.Default // template.HTML
 	return f.updateValue("", string(f.Value), make(map[string]interface{}), PostTypeCreate, sql)
 }
 
 func (f *FormField) setOptionsFromSQL(sql *db.SQL) {
 	if sql != nil && f.OptionTable.Table != "" && len(f.Options) == 0 {
 
+		// Table將SQL(struct)資訊清除後將參數設置至SQL.TableName回傳
+		// Select將參數設置至SQL(struct).Fields並且設置SQL(struct).Functions
 		sql.Table(f.OptionTable.Table).Select(f.OptionTable.ValueField, f.OptionTable.TextField)
 
 		if f.OptionTable.QueryProcessFn != nil {
 			f.OptionTable.QueryProcessFn(sql)
 		}
 
+		// 返回所有符合查詢的結果
 		queryRes, err := sql.All()
 		if err == nil {
 			for _, item := range queryRes {
@@ -235,7 +247,12 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 	}
 
 	if f.isBelongToATable() {
+	// IsSelect在template\types\form\form.go
+	// 判斷f.FormTypet(unit8)是否符合條件
 		if f.FormType.IsSelect() {
+			// type OptionInitFn func(val FieldModel) FieldOptions
+			// SetSelectedLabel(設置所選標籤)對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
+			// SelectedLabel判斷條件後回傳[]template.HTML
 			if len(f.OptionsArr) == 0 && f.OptionArrInitFn != nil {
 				f.OptionsArr = f.OptionArrInitFn(m)
 				for i := 0; i < len(f.OptionsArr); i++ {
@@ -249,12 +266,14 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 					values := f.ToDisplayStringArray(m)
 					f.OptionsArr = make([]FieldOptions, len(values))
 					for k, value := range values {
+						// SetSelected判斷條件後將參數f.FormType.SelectedLabel()([]template.HTML)加入FieldOptions[k].SelectedLabel
 						f.OptionsArr[k] = f.Options.Copy().SetSelected(value, f.FormType.SelectedLabel())
 					}
 				} else {
 					values := f.ToDisplayStringArrayArray(m)
 					f.OptionsArr = make([]FieldOptions, len(values))
 					for k, value := range values {
+						// SetSelected判斷條件後將參數f.FormType.SelectedLabel()([]template.HTML)加入FieldOptions[k].SelectedLabel
 						f.OptionsArr[k] = f.Options.Copy().SetSelected(value, f.FormType.SelectedLabel())
 					}
 				}
@@ -263,8 +282,13 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 			f.ValueArr = f.ToDisplayStringArray(m)
 		}
 	} else {
+		// IsSelect在template\types\form\form.go
+		// 判斷f.FormTypet(unit8)是否符合條件
 		if f.FormType.IsSelect() {
 			if len(f.Options) == 0 && f.OptionInitFn != nil {
+			// type OptionInitFn func(val FieldModel) FieldOptions
+			// SetSelectedLabel(設置所選標籤)對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
+			// SelectedLabel判斷條件後回傳[]template.HTML
 				f.Options = f.OptionInitFn(m).SetSelectedLabel(f.FormType.SelectedLabel())
 			} else {
 				f.setOptionsFromSQL(sql)
@@ -285,6 +309,7 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 	return f
 }
 
+// FillCustomContent(填寫自定義內容)判斷條件後設置FormField回傳
 func (f *FormField) FillCustomContent() *FormField {
 	// TODO: optimize
 	if f.CustomContent != "" {
@@ -417,6 +442,7 @@ func (f *FormPanel) AddXssJsFilter() *FormPanel {
 	return f
 }
 
+// 將參數name、type設置至FormPanel.primaryKey後回傳
 func (f *FormPanel) SetPrimaryKey(name string, typ db.DatabaseType) *FormPanel {
 	f.primaryKey = primaryKey{Name: name, Type: typ}
 	return f
@@ -1300,12 +1326,15 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 	return groupFormList, groupHeaders
 }
 
+// GroupField(欄位分組)先判斷條件後處理FormField，最後將FormField與TabHeader加入至groupFormList與groupHeaders後回傳
 func (f *FormPanel) GroupField(sql ...func() *db.SQL) ([]FormFields, []string) {
 	var (
 		groupFormList = make([]FormFields, 0)
 		groupHeaders  = make([]string, 0)
 	)
 
+	// FormPanel.TabGroups [][]string
+	// 判斷條件
 	for index, group := range f.TabGroups {
 		list := make(FormFields, 0)
 		for _, fieldName := range group {
@@ -1323,6 +1352,10 @@ func (f *FormPanel) GroupField(sql ...func() *db.SQL) ([]FormFields, []string) {
 					list = append(list, *field)
 				} else {
 					if len(sql) > 0 {
+						// 在template\types\form.go
+						// UpdateDefaultValue首先對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
+						// 最後判斷條件後將參數f.FormType.SelectedLabel()([]template.HTML)加入FieldOptions[k].SelectedLabel，回傳FormField
+						// FillCustomContent(填寫自定義內容)對FormFields([]FormField)執行迴圈，判斷條件後設置FormField，最後回傳FormFields([]FormField)
 						list = append(list, *(field.UpdateDefaultValue(sql[0]())))
 					} else {
 						list = append(list, *(field.UpdateDefaultValue(nil)))
@@ -1331,26 +1364,32 @@ func (f *FormPanel) GroupField(sql ...func() *db.SQL) ([]FormFields, []string) {
 			}
 		}
 		groupFormList = append(groupFormList, list.FillCustomContent())
+		// TabHeaders []string
 		groupHeaders = append(groupHeaders, f.TabHeaders[index])
 	}
 
 	return groupFormList, groupHeaders
 }
 
+// FieldsWithValue(對帶值的欄位更新)對FormPanel.FieldList(FormFields)執行迴圈，分別更新FormField(struct)並加入FormFields後回傳
 func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[string]interface{}, sql func() *db.SQL) FormFields {
 	var (
 		list  = make(FormFields, 0)
 		hasPK = false
 	)
 
+	// field為表單上所有欄位資訊
 	for _, field := range f.FieldList {
+		// rowValue為該欄位的值
 		rowValue := field.GetRawValue(columns, res[field.Field])
 
+		// 編輯menu頁面時都field.FatherField都為空
 		if field.FatherField != "" {
 			f.FieldList.FindTableField(field.Field, field.FatherField).UpdateValue(id, rowValue, res, sql())
 		} else if field.FormType.IsTable() {
 			list = append(list, field)
 		} else {
+			// 將field(struct)的值都更新並加入list([]FormField)中
 			list = append(list, *(field.UpdateValue(id, rowValue, res, sql())))
 		}
 
@@ -1359,6 +1398,7 @@ func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[str
 		}
 	}
 
+	// hasPK判斷是否有primary key
 	if !hasPK {
 		list = list.Add(FormField{
 			Head:       pk,
@@ -1370,13 +1410,15 @@ func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[str
 		})
 	}
 
+	// FillCustomContent(填寫自定義內容)對FormFields([]FormField)執行迴圈，判斷條件後設置FormField，最後回傳FormFields([]FormField)
 	return list.FillCustomContent()
 }
 
+// 判斷欄位是否允許添加，例如ID無法手動增加，接著將預設值更新後得到FormField(struct)並加入FormFields中，最後回傳FormFields
 func (f *FormPanel) FieldsWithDefaultValue(sql ...func() *db.SQL) FormFields {
 	var list = make(FormFields, 0)
 	for _, v := range f.FieldList {
-
+		// 判斷欄位是否允許添加，例如ID、建立時間、更新時間欄位無法手動增加
 		if v.allowAdd() {
 			v.Editable = true
 			if v.FatherField != "" {
@@ -1389,7 +1431,8 @@ func (f *FormPanel) FieldsWithDefaultValue(sql ...func() *db.SQL) FormFields {
 				list = append(list, v)
 			} else {
 				if len(sql) > 0 {
-
+					// 新增菜單時(/menu/new)會執行
+					// UpdateDefaultValue將預設值更新後回傳FormField(struct)
 					list = append(list, *(v.UpdateDefaultValue(sql[0]())))
 				} else {
 
@@ -1399,6 +1442,8 @@ func (f *FormPanel) FieldsWithDefaultValue(sql ...func() *db.SQL) FormFields {
 		}
 	}
 
+	// FillCustomContent(填寫自定義內容)對FormFields([]FormField)執行迴圈，判斷條件後設置FormField，最後回傳FormFields([]FormField)
+	// 新增菜單api(/menu/new)不會執行下列動作(自定義)，所以list不變
 	return list.FillCustomContent().RemoveNotShow()
 }
 
@@ -1468,9 +1513,13 @@ func (f FormFields) FindTableChildren(father string) []*FormField {
 	return list
 }
 
+// FillCustomContent(填寫自定義內容)對FormFields([]FormField)執行迴圈，判斷條件後設置FormField，最後回傳FormFields([]FormField)
 func (f FormFields) FillCustomContent() FormFields {
 	for i := range f {
+		// 判斷是否是自定義
+		// 新增菜單api(/menu/new)不會執行下列動作(自定義)
 		if f[i].FormType.IsCustom() {
+			// FillCustomContent(填寫自定義內容)判斷條件後設置FormField回傳
 			f[i] = *(f[i]).FillCustomContent()
 		}
 	}

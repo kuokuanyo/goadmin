@@ -12,6 +12,7 @@ type Base struct {
 	Attribute types.Attribute
 }
 
+// 建立BoxAttribute(struct)並設置值後回傳
 func (b Base) Box() types.BoxAttribute {
 	return &BoxAttribute{
 		Name:       "box",
@@ -24,6 +25,7 @@ func (b Base) Box() types.BoxAttribute {
 	}
 }
 
+// 建立ColAttribute(struct)並設置值後回傳
 func (b Base) Col() types.ColAttribute {
 	return &ColAttribute{
 		Name:      "col",
@@ -33,6 +35,7 @@ func (b Base) Col() types.ColAttribute {
 	}
 }
 
+// 建立FormAttribute(struct)並設置值後回傳
 func (b Base) Form() types.FormAttribute {
 	return &FormAttribute{
 		Name:         "form",
@@ -49,6 +52,7 @@ func (b Base) Form() types.FormAttribute {
 	}
 }
 
+// 建立ImgAttribute(struct)並設置值後回傳
 func (b Base) Image() types.ImgAttribute {
 	return &ImgAttribute{
 		Name:      "image",
@@ -59,6 +63,7 @@ func (b Base) Image() types.ImgAttribute {
 	}
 }
 
+// 建立TabsAttribute(struct)並設置值後回傳
 func (b Base) Tabs() types.TabsAttribute {
 	return &TabsAttribute{
 		Name:      "tabs",
@@ -66,6 +71,7 @@ func (b Base) Tabs() types.TabsAttribute {
 	}
 }
 
+// 建立AlertAttribute(struct)並設置值後回傳
 func (b Base) Alert() types.AlertAttribute {
 	return &AlertAttribute{
 		Name:      "alert",
@@ -73,6 +79,7 @@ func (b Base) Alert() types.AlertAttribute {
 	}
 }
 
+// 建立LabelAttribute(struct)並設置值後回傳
 func (b Base) Label() types.LabelAttribute {
 	return &LabelAttribute{
 		Name:      "label",
@@ -82,6 +89,7 @@ func (b Base) Label() types.LabelAttribute {
 	}
 }
 
+// 建立LinkAttribute(struct)並設置值後回傳
 func (b Base) Link() types.LinkAttribute {
 	return &LinkAttribute{
 		Name:      "link",
@@ -90,6 +98,7 @@ func (b Base) Link() types.LinkAttribute {
 	}
 }
 
+// 建立PopupAttribute(struct)並設置值後回傳
 func (b Base) Popup() types.PopupAttribute {
 	return &PopupAttribute{
 		Name:      "popup",
@@ -97,6 +106,7 @@ func (b Base) Popup() types.PopupAttribute {
 	}
 }
 
+// 建立PaginatorAttribute(struct)並設置值後回傳
 func (b Base) Paginator() types.PaginatorAttribute {
 	return &PaginatorAttribute{
 		Name:      "paginator",
@@ -104,6 +114,7 @@ func (b Base) Paginator() types.PaginatorAttribute {
 	}
 }
 
+// 建立RowAttribute(struct)並設置值後回傳
 func (b Base) Row() types.RowAttribute {
 	return &RowAttribute{
 		Name:      "row",
@@ -112,6 +123,7 @@ func (b Base) Row() types.RowAttribute {
 	}
 }
 
+// 建立ButtonAttribute(struct)並設置值後回傳
 func (b Base) Button() types.ButtonAttribute {
 	return &ButtonAttribute{
 		Name:      "button",
@@ -121,6 +133,7 @@ func (b Base) Button() types.ButtonAttribute {
 	}
 }
 
+// 建立TableAttribute(struct)並設置值後回傳
 func (b Base) Table() types.TableAttribute {
 	return &TableAttribute{
 		Name:      "table",
@@ -133,6 +146,7 @@ func (b Base) Table() types.TableAttribute {
 	}
 }
 
+// 建立DataTableAttribute(struct)並設置值後回傳
 func (b Base) DataTable() types.DataTableAttribute {
 	return &DataTableAttribute{
 		TableAttribute: *(b.Table().
@@ -143,6 +157,7 @@ func (b Base) DataTable() types.DataTableAttribute {
 	}
 }
 
+// 建立TreeAttribute(struct)並設置值後回傳
 func (b Base) Tree() types.TreeAttribute {
 	return &TreeAttribute{
 		Name:      "tree",
@@ -151,6 +166,7 @@ func (b Base) Tree() types.TreeAttribute {
 	}
 }
 
+// 建立TreeAttribute(struct)並設置值後回傳
 func (b Base) TreeView() types.TreeViewAttribute {
 	return &TreeViewAttribute{
 		Name:      "treeview",

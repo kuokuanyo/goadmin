@@ -16,8 +16,12 @@ import (
 // Admin is a GoAdmin plugin.
 type Admin struct {
 	*plugins.Base
+	// plugins\admin\modules\table\table.go
+	// GeneratorList類別為map[string]Generator，Generator類別為func(ctx *context.Context) Table
 	tableList table.GeneratorList
+	// plugins\admin\modules\guard
 	guardian  *guard.Guard
+	// plugins\admin\controller
 	handler   *controller.Handler
 }
 
@@ -26,10 +30,18 @@ type Admin struct {
 func (admin *Admin) InitPlugin(services service.List) {
 
 	// DO NOT DELETE
+	// 將參數services(map[string]Service)設置至Admin.Base(struct)
 	admin.InitBase(services)
 
+	// 透過參數("config")取得匹配的Service(interface)
+	// GetService將參數services.Get("config")轉換成Service(struct)後回傳Service.C(Config struct)
 	c := config.GetService(services.Get("config"))
+
+	// 將參數conn、c設置至SystemTable(struct)後回傳
 	st := table.NewSystemTable(admin.Conn, c)
+
+	// GeneratorList類別為map[string]Generator，Generator類別為func(ctx *context.Context) Table
+	// Combine透過參數判斷GeneratorList已經有該key、value，如果不存在則加入該鍵與值
 	admin.tableList.Combine(table.GeneratorList{
 		"manager":        st.GetManagerTable,
 		"permission":     st.GetPermissionTable,
@@ -40,14 +52,22 @@ func (admin *Admin) InitPlugin(services service.List) {
 		"site":           st.GetSiteTable,
 		"generate":       st.GetGenerateForm,
 	})
+
+	// 將參數admin.Services, admin.Conn, admin.tableList設置Admin.guardian(struct)後回傳
 	admin.guardian = guard.New(admin.Services, admin.Conn, admin.tableList, admin.UI.NavButtons)
+
+	// 將參數設置至Config(struct)
 	handlerCfg := controller.Config{
 		Config:     c,
 		Services:   services,
 		Generators: admin.tableList,
 		Connection: admin.Conn,
 	}
+
+	// 將參數handlerCfg(struct)參數設置至Admin.handler(struct)
 	admin.handler.UpdateCfg(handlerCfg)
+
+	// 初始化router
 	admin.initRouter()
 	admin.handler.SetRoutes(admin.App.Routers)
 	admin.handler.AddNavButton(admin.UI.NavButtons)
@@ -58,10 +78,12 @@ func (admin *Admin) InitPlugin(services service.List) {
 }
 
 // NewAdmin return the global Admin plugin.
+// 設置Admin(struct)後回傳
 func NewAdmin(tableCfg ...table.GeneratorList) *Admin {
 	return &Admin{
 		tableList: make(table.GeneratorList).CombineAll(tableCfg),
 		Base:      &plugins.Base{PlugName: "admin"},
+		// 設置Handler(struct)後回傳
 		handler:   controller.New(),
 	}
 }
@@ -71,18 +93,24 @@ func (admin *Admin) GetAddOperationFn() context.NodeProcessor {
 }
 
 // SetCaptcha set captcha driver.
+// 將參數captcha(驗證碼)設置至Admin.handler.captchaConfig(struct)
 func (admin *Admin) SetCaptcha(captcha map[string]string) *Admin {
+	// SetCaptcha在plugins\admin\controller\common.go
+	// 將參數captcha設置至Handler.captchaConfig(驗證碼配置)
 	admin.handler.SetCaptcha(captcha)
 	return admin
 }
 
 // AddGenerator add table model generator.
+// 將參數key及gen(function)添加數值至至GeneratorList(map[string]Generator)
 func (admin *Admin) AddGenerator(key string, g table.Generator) *Admin {
+	// Add將參數key及g(function)添加至Admin.tableList(map[string]Generator)
 	admin.tableList.Add(key, g)
 	return admin
 }
 
 // AddGenerators add table model generators.
+
 func (admin *Admin) AddGenerators(gen ...table.GeneratorList) *Admin {
 	admin.tableList.CombineAll(gen)
 	return admin

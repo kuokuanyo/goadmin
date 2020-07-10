@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
+// Login也是Component(interface)
 type Login struct {
 	Name string
 }
 
+// 設置Login(struct)並回傳
 func GetLoginComponent() *Login {
 	return &Login{
 		Name: "login",

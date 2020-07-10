@@ -24,16 +24,19 @@ type MenuModel struct {
 }
 
 // Menu return a default menu model.
+// 將MenuModel(struct).Base.TableName設置goadmin_menu後回傳
 func Menu() MenuModel {
 	return MenuModel{Base: Base{TableName: "goadmin_menu"}}
 }
 
 // MenuWithId return a default menu model of given id.
+// 透過參數將id與tablename(goadmin_menu)設置至MenuModel(struct)後回傳
 func MenuWithId(id string) MenuModel {
 	idInt, _ := strconv.Atoi(id)
 	return MenuModel{Base: Base{TableName: "goadmin_menu"}, Id: int64(idInt)}
 }
 
+// 將參數con設置至MenuModel.Base.Conn
 func (t MenuModel) SetConn(con db.Connection) MenuModel {
 	t.Conn = con
 	return t
@@ -46,6 +49,7 @@ func (t MenuModel) Find(id interface{}) MenuModel {
 }
 
 // New create a new menu model.
+// 將參數值新增至資料表(MenuModel.Base.TableName(goadmin_menu))中，最後將參數值都設置在MenuModel中
 func (t MenuModel) New(title, icon, uri, header string, parentId, order int64) (MenuModel, error) {
 
 	id, err := t.Table(t.TableName).Insert(dialect.H{
@@ -68,11 +72,14 @@ func (t MenuModel) New(title, icon, uri, header string, parentId, order int64) (
 }
 
 // Delete delete the menu model.
+// 刪除條件MenuModel.id的資料，除了刪除goadmin_menu之外還要刪除goadmin_role_menu資料
+// 如果MenuModel.id是其他菜單的父級，也必須刪除
 func (t MenuModel) Delete() {
 	_ = t.Table(t.TableName).Where("id", "=", t.Id).Delete()
 	_ = t.Table("goadmin_role_menu").Where("menu_id", "=", t.Id).Delete()
 	items, _ := t.Table(t.TableName).Where("parent_id", "=", t.Id).All()
 
+	// 如果MenuModel.id是其他菜單的父級，也必須刪除
 	if len(items) > 0 {
 		ids := make([]interface{}, len(items))
 		for i := 0; i < len(ids); i++ {
@@ -85,6 +92,7 @@ func (t MenuModel) Delete() {
 }
 
 // Update update the menu model.
+// 將goadmin_menu資料表條件為id = MenuModel.Id的資料透過參數(由multipart/form-data設置)更新
 func (t MenuModel) Update(title, icon, uri, header string, parentId int64) (int64, error) {
 	return t.Table(t.TableName).
 		Where("id", "=", t.Id).
@@ -106,9 +114,11 @@ type OrderItem struct {
 }
 
 // ResetOrder update the order of menu models.
+// 更改menu的順序
 func (t MenuModel) ResetOrder(data []byte) {
 
 	var items OrderItems
+	// 將參數data解碼至items([]OrderItem(struct))
 	_ = json.Unmarshal(data, &items)
 	count := 1
 	for _, v := range items {
@@ -157,6 +167,7 @@ func (t MenuModel) ResetOrder(data []byte) {
 }
 
 // CheckRole check the role if has permission to get the menu.
+// 檢查goadmin_role_menu資料表裡是否有符合role_id = 參數roleId與menu_id = MenuModel.Id條件
 func (t MenuModel) CheckRole(roleId string) bool {
 	checkRole, _ := t.Table("goadmin_role_menu").
 		Where("role_id", "=", roleId).
@@ -166,9 +177,12 @@ func (t MenuModel) CheckRole(roleId string) bool {
 }
 
 // AddRole add a role to the menu.
+// 先檢查goadmin_role_menu條件，接著將參數roleId(role_id)與MenuModel.Id(menu_id)加入goadmin_role_menu資料表
 func (t MenuModel) AddRole(roleId string) (int64, error) {
 	if roleId != "" {
+		// 檢查goadmin_role_menu資料表裡是否有符合role_id = 參數roleId與menu_id = MenuModel.Id條件
 		if !t.CheckRole(roleId) {
+			// 將參數roleId(role_id)與MenuModel.Id(menu_id)加入goadmin_role_menu資料表
 			return t.Table("goadmin_role_menu").
 				Insert(dialect.H{
 					"role_id": roleId,
@@ -180,6 +194,7 @@ func (t MenuModel) AddRole(roleId string) (int64, error) {
 }
 
 // DeleteRoles delete roles with menu.
+// 刪除goadmin_role_menu資料表中menu_id = MenuModel.Id條件的資料
 func (t MenuModel) DeleteRoles() error {
 	return t.Table("goadmin_role_menu").
 		Where("menu_id", "=", t.Id).

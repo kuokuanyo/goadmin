@@ -157,6 +157,7 @@ type GetDataFromURLRes struct {
 	Size int
 }
 
+// getDataFromURL(從url中取得data)
 func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[string]interface{}, int) {
 
 	u := ""
@@ -553,6 +554,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	}, nil
 }
 
+// 假設參數list([]map[string]interface{})長度大於零則回傳list[0](map[string]interface{})
 func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
 	if len(list) > 0 {
 		return list[0]
@@ -561,14 +563,17 @@ func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
 }
 
 // GetDataWithId query the single row of data.
+// GetDataWithId(透過id取得資料)透過id取得goadmin_menu資料表中的資料，接著對有帶值的欄位更新並加入FormFields後回傳，最後設置值至FormInfo(struct)中
 func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, error) {
 
 	var (
 		res     map[string]interface{}
 		columns Columns
+		// PK透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string，回傳第一個數值
 		id      = param.PK()
 	)
 
+	// getDataRes假設參數list([]map[string]interface{})長度大於零則回傳list[0](map[string]interface{})
 	if tb.getDataFun != nil {
 		res = getDataRes(tb.getDataFun(param))
 	} else if tb.sourceURL != "" {
@@ -579,6 +584,9 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		res = getDataRes(tb.Info.GetDataFn(param))
 	} else {
 
+		// getColumns(取得欄位)將欄位名稱加入columns([]string)
+		// 如果有值是primary_key並且自動遞增則bool = true，最後回傳欄位名稱及bool
+		// columns為goadmin_menu所有欄位名稱
 		columns, _ = tb.getColumns(tb.Form.Table)
 
 		var (
@@ -586,11 +594,19 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 
 			err            error
 			joinTables     = make([]string, 0)
+			// args為編輯的id
 			args           = []interface{}{id}
 			connection     = tb.db()
+			// db透過參數(k)取得匹配的Service(interface)，接著將參數services.Get(tb.connectionDriver)轉換為Connection(interface)回傳並回傳
 			delimiter      = connection.GetDelimiter()
+			// GetForm將參數值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳
+			// tablename = goadmin_menu
 			tableName      = tb.GetForm().Table
+			// Delimiter在plugins\admin\modules\table\default.go
+			// Delimiter判斷參數del後回傳del+s(參數)+del或[s(參數)]
+			// pk = goadmin_menu.'id'
 			pk             = tableName + "." + modules.Delimiter(delimiter, tb.PrimaryKey.Name)
+			// queryStatement取得goadmin_menu某一筆資料(根據id)
 			queryStatement = "select %s from " + modules.Delimiter(delimiter, "%s") + " %s where " + pk + " = ? %s "
 		)
 
@@ -598,15 +614,21 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			queryStatement = "select %s from %s %s where " + pk + " = ? %s "
 		}
 
+		// tb.Form.FieldList為表單所有欄位資訊
 		for _, field := range tb.Form.FieldList {
 
 			if field.Field != pk && modules.InArray(columns, field.Field) &&
+			// Valid在template\types\info.go
+			// 對joins([]join(struct))執行迴圈，假設Join的Table、Field、JoinField不為空，回傳true
 				!field.Joins.Valid() {
+				// 將所有欄位名稱�m加上資料表名(ex:tablename.colname)
+				// ex:goadmin_menu.`id`,goadmin_menu.`parent_id`,goadmin_menu.`title`,...
 				fields += tableName + "." + modules.FilterField(field.Field, delimiter) + ","
 			}
 
 			headField := field.Field
 
+			// 在編輯頁面時不會執行下列判斷(沒有join)
 			if field.Joins.Valid() {
 				headField = field.Joins.Last().Table + parameter.FilterParamJoinInfix + field.Field
 				joinFields += db.GetAggregationExpression(connection.Name(), field.Joins.Last().Table+"."+
@@ -625,9 +647,11 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			}
 		}
 
+		// fields再加上"goadmin_menu.`id`"
 		fields += pk
 		groupFields := fields
 
+		// 在編輯頁面時不會執行下列判斷(沒有joinFields)
 		if joinFields != "" {
 			fields += "," + joinFields[:len(joinFields)-1]
 			if connection.Name() == db.DriverMssql {
@@ -642,6 +666,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			}
 		}
 
+		// 在編輯頁面時不會執行下列判斷(沒有joinTables)
 		if len(joinTables) > 0 {
 			if connection.Name() == db.DriverMssql {
 				groupBy = " GROUP BY " + groupFields
@@ -652,11 +677,17 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 
 		queryCmd := fmt.Sprintf(queryStatement, fields, tableName, joins, groupBy)
 
+		// 印出sql資料(編輯頁面時沒有印出)
 		logger.LogSQL(queryCmd, args)
 
+		// 取得單筆資料(利用id)
+		// QueryWithConnection(connection方法)在admin\modules\db\mysql.go
+		// QueryWithConnection有給定連接(tb.connection)名稱，透過參數tb.connection查詢db.DbList[tb.connection]資料並回傳
 		result, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
 
 		if err != nil {
+			// tb.Form.Title主題左上角(ex:菜單管理)
+			// tb.Form.Description主題旁邊的描述(ex:菜單管理)
 			return FormInfo{Title: tb.Form.Title, Description: tb.Form.Description}, err
 		}
 
@@ -668,21 +699,27 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	}
 
 	var (
+		// 編輯頁面時，groupFormList、groupHeaders都為空
 		groupFormList = make([]types.FormFields, 0)
 		groupHeaders  = make([]string, 0)
 	)
 
+	// 在編輯頁面時，沒有tb.Form.TabGroups(組標籤)
 	if len(tb.Form.TabGroups) > 0 {
 		groupFormList, groupHeaders = tb.Form.GroupFieldWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sql)
 		return FormInfo{
 			FieldList:         tb.Form.FieldList,
 			GroupFieldList:    groupFormList,
 			GroupFieldHeaders: groupHeaders,
+			// tb.Form.Title左上角標題
 			Title:             tb.Form.Title,
+			// tb.Form.Description標題旁的描述
 			Description:       tb.Form.Description,
 		}, nil
 	}
 
+	// tb.PrimaryKey.Name = id
+	// columns = [id parent_id type order title icon uri header created_at updated_at]
 	var fieldList = tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sql)
 
 	return FormInfo{
@@ -956,9 +993,14 @@ func (tb *DefaultTable) DeleteData(id string) error {
 	return err
 }
 
+// GetNewForm(取得新表單)判斷條件(TabGroups)後，設置FormInfo(struct)後並回傳
 func (tb *DefaultTable) GetNewForm() FormInfo {
 
 	if len(tb.Form.TabGroups) == 0 {
+		// 在template\types\form.go
+		// FillCustomContent(填寫自定義內容)對FormFields([]FormField)執行迴圈，判斷條件後設置FormField，最後回傳FormFields([]FormField)
+		// FieldsWithDefaultValue判斷欄位是否允許添加，例如ID無法手動增加，接著將預設值更新後得到FormField(struct)並加入FormFields中，最後回傳FormFields
+		// ----------/menu、/menu/new會執行----------------
 		return FormInfo{FieldList: tb.Form.FieldsWithDefaultValue(tb.sql)}
 	}
 	newForm, headers := tb.Form.GroupField(tb.sql)
@@ -996,8 +1038,11 @@ func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, colum
 }
 
 // db is a helper function return raw db connection.
+// 透過參數(k)取得匹配的Service(interface)，接著將參數services.Get(tb.connectionDriver)轉換為Connection(interface)回傳並回傳
 func (tb *DefaultTable) db() db.Connection {
 	if tb.connectionDriver != "" && tb.getDataFromDB() {
+		// GetConnectionFromService將參數services.Get(tb.connectionDriver)轉換為Connect(interface)回傳並回傳
+		// Get透過參數(k)取得匹配的Service(interface)
 		return db.GetConnectionFromService(services.Get(tb.connectionDriver))
 	}
 	return nil
@@ -1010,13 +1055,17 @@ func (tb *DefaultTable) delimiter() string {
 	return ""
 }
 
+// getDataFromDB(從資料庫取得資料)判斷條件
 func (tb *DefaultTable) getDataFromDB() bool {
 	return tb.sourceURL == "" && tb.getDataFun == nil && tb.Info.GetDataFn == nil && tb.Detail.GetDataFn == nil
 }
 
 // sql is a helper function return db sql.
+// 將參數設置(connName、conn)並回傳sql(struct)
 func (tb *DefaultTable) sql() *db.SQL {
+	// getDataFromDB(從資料庫取得資料)判斷條件
 	if tb.connectionDriver != "" && tb.getDataFromDB() {
+		// WithDriverAndConnection將參數設置(connName、conn)並回傳sql(struct)
 		return db.WithDriverAndConnection(tb.connection, db.GetConnectionFromService(services.Get(tb.connectionDriver)))
 	}
 	return nil
@@ -1024,12 +1073,20 @@ func (tb *DefaultTable) sql() *db.SQL {
 
 type Columns []string
 
+// getColumns(取得欄位)將欄位名稱加入columns([]string)
+// 如果有值是primary_key並且自動遞增則bool = true，最後回傳欄位名稱及bool
 func (tb *DefaultTable) getColumns(table string) (Columns, bool) {
 
+	// sql將參數設置(connName、conn)並回傳sql(struct)
+	// Table將SQL(struct)資訊清除後將參數table設置至SQL.TableName回傳
+	// ShowColumns取得所有欄位資訊
 	columnsModel, _ := tb.sql().Table(table).ShowColumns()
 
 	columns := make(Columns, len(columnsModel))
+
+	// 判斷資料庫引擎類型
 	switch tb.connectionDriver {
+	// 將欄位名稱加入columns([]string)，如果有值是primary_key並且自動遞增則bool = true，最後回傳欄位名稱及bool
 	case db.DriverPostgresql:
 		auto := false
 		for key, model := range columnsModel {

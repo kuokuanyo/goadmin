@@ -17,20 +17,31 @@ type Button interface {
 	SetName(name string)
 }
 
+// BaseButton(struct)也是Button(interface)
 type BaseButton struct {
 	Id, Url, Method, Name string
 	Title                 template.HTML
 	Action                Action
 }
 
+// 回傳空字串
 func (b *BaseButton) Content() (template.HTML, template.JS) { return "", "" }
+
+// 回傳BaseButton.Action(interface)
 func (b *BaseButton) GetAction() Action                     { return b.Action }
+
+// 回傳BaseButton.ID
 func (b *BaseButton) ID() string                            { return b.Id }
+
+// 回傳BaseButton.Url
 func (b *BaseButton) URL() string                           { return b.Url }
+
+// 回傳BaseButton.Method
 func (b *BaseButton) METHOD() string                        { return b.Method }
 func (b *BaseButton) GetName() string                       { return b.Name }
 func (b *BaseButton) SetName(name string)                   { b.Name = name }
 
+// 基本的BaseButton(struct)再加上顏色、圖標...等資訊
 type DefaultButton struct {
 	*BaseButton
 	Color     template.HTML
@@ -156,9 +167,11 @@ func (b Buttons) FooterContent() template.HTML {
 	return footer
 }
 
+// 檢查權限，回傳Buttons([]Button(interface))
 func (b Buttons) CheckPermission(user models.UserModel) Buttons {
 	btns := make(Buttons, 0)
 	for _, btn := range b {
+		// 檢查權限(藉由url、method)
 		if user.CheckPermissionByUrlMethod(btn.URL(), btn.METHOD(), url.Values{}) {
 			btns = append(btns, btn)
 		}
@@ -221,8 +234,10 @@ type NavButton struct {
 	Icon string
 }
 
+// 回傳NavButton(struct)設置資訊
 func GetNavButton(title template.HTML, icon string, action Action, names ...string) *NavButton {
 
+	//btnUUID回傳"info-btn-" + utils.Uuid(10)
 	id := btnUUID()
 	action.SetBtnId(id)
 	node := action.GetCallbacks()

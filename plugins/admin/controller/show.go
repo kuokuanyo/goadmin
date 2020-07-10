@@ -285,8 +285,13 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 }
 
 // Assets return front-end assets according the request path.
+// 處理前端檔案
 func (h *Handler) Assets(ctx *context.Context) {
+	// URLRemovePrefix將URL的前綴(ex:/admin)去除
 	filepath := h.config.URLRemovePrefix(ctx.Path())
+
+	// aTemplate判斷templateMap(map[string]Template)的key鍵是否參數globalCfg.Theme，有則回傳Template(interface)
+	// GetAsset對map[string]Component迴圈，對每一個Component(interface)執行GetAsset方法
 	data, err := aTemplate().GetAsset(filepath)
 
 	if err != nil {
@@ -306,6 +311,7 @@ func (h *Handler) Assets(ctx *context.Context) {
 
 	etag := fmt.Sprintf("%x", md5.Sum(data))
 
+	// 藉由參數key獲得Header
 	if match := ctx.Headers("If-None-Match"); match != "" {
 		if strings.Contains(match, etag) {
 			ctx.SetStatusCode(http.StatusNotModified)
@@ -313,6 +319,7 @@ func (h *Handler) Assets(ctx *context.Context) {
 		}
 	}
 
+	// 將code, headers and body(參數)存在Context.Response中
 	ctx.DataWithHeaders(http.StatusOK, map[string]string{
 		"Content-Type":   contentType,
 		"Cache-Control":  "max-age=2592000",

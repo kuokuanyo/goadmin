@@ -19,18 +19,26 @@ import (
 )
 
 // Auth check the input password and username for authentication.
+// ????username?password????user?role?permission?????menu
+// ???????(goadmin_users)????(??)
 func (h *Handler) Auth(ctx *context.Context) {
 
 	var (
 		user     models.UserModel
 		ok       bool
 		errMsg   = "fail"
+		// ServiceKey = auth
+		// ???????????(auth.ServiceKey)?Service
 		s, exist = h.services.GetOrNot(auth.ServiceKey)
 	)
 
+	// ??Handler.captchaConfig(map[string]string)["driver"]??
 	if capDriver, ok := h.captchaConfig["driver"]; ok {
+		// Get?plugins\admin\modules\captcha\captcha.go
+		// ??List(make(map[string]Captcha))??????key?????Captcha(interface)
 		capt, ok := captcha.Get(capDriver)
 
+		// ??token
 		if ok {
 			if !capt.Validate(ctx.FormValue("token")) {
 				response.BadRequest(ctx, "wrong captcha")
@@ -39,6 +47,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		}
 	}
 
+	// ????key??url????
 	if !exist {
 		password := ctx.FormValue("password")
 		username := ctx.FormValue("username")
@@ -47,6 +56,8 @@ func (h *Handler) Auth(ctx *context.Context) {
 			response.BadRequest(ctx, "wrong password or username")
 			return
 		}
+		// modules\auth\auth.go
+		// ??user??????????user?role?permission???menu????????(goadmin_users)????(??)
 		user, ok = auth.Check(password, username, h.conn)
 	} else {
 		user, ok, errMsg = auth.GetService(s).P(ctx)
@@ -57,6 +68,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		return
 	}
 
+	// ??cookie(struct)????response header Set-Cookie?
 	err := auth.SetCookie(ctx, user, h.conn)
 
 	if err != nil {
@@ -64,6 +76,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		return
 	}
 
+	// ????Referer??Header
 	if ref := ctx.Headers("Referer"); ref != "" {
 		if u, err := url.Parse(ref); err == nil {
 			v := u.Query()
@@ -77,6 +90,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		}
 	}
 
+	// ?????code:200 and msg:ok and data
 	response.OkWithData(ctx, map[string]interface{}{
 		"url": h.config.GetIndexURL(),
 	})
@@ -86,19 +100,30 @@ func (h *Handler) Auth(ctx *context.Context) {
 
 // Logout delete the cookie.
 func (h *Handler) Logout(ctx *context.Context) {
+	// DelCookie??cookie(session)??
+	// GetConnection?????service.List?????Connection(interface)??
 	err := auth.DelCookie(ctx, db.GetConnection(h.services))
 	if err != nil {
 		logger.Error("logout error", err)
 	}
+
+	// AddHeader???(key?value)??header?(Context.Response.Header)
+	// GetLoginUrl globalCfg.LoginUrl
 	ctx.AddHeader("Location", h.config.Url(config.GetLoginUrl()))
 	ctx.SetStatusCode(302)
 }
 
 // ShowLogin show the login page.
+// ShowLogin??map[string]Component(interface)?????login(key)???????template?data??buf???HTML
 func (h *Handler) ShowLogin(ctx *context.Context) {
 
+	// GetComp??map[string]Component?????name(login)?????????Component(interface)
+	// GetTemplate?Component(interface)???
 	tmpl, name := template.GetComp("login").GetTemplate()
 	buf := new(bytes.Buffer)
+
+	// ExecuteTemplate?html/template??
+	// ??????data??buf(struct)???HTML
 	if err := tmpl.ExecuteTemplate(buf, name, struct {
 		UrlPrefix string
 		Title     string

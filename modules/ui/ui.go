@@ -19,7 +19,7 @@ func (s *Service) Name() string {
 	return "ui"
 }
 
-
+// 將參數srv轉換成Service(struct)後回傳
 func GetService(srv service.List) *Service {
 	if v, ok := srv.Get("ui").(*Service); ok {
 		return v

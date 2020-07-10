@@ -44,6 +44,7 @@ func GetDialect() Dialect {
 }
 
 // GetDialectByDriver return the Dialect of given driver.
+// 不同資料庫引擎有不同使用符號
 func GetDialectByDriver(driver string) Dialect {
 	switch driver {
 	case "mysql":
@@ -68,9 +69,11 @@ func GetDialectByDriver(driver string) Dialect {
 }
 
 // H is a shorthand of map.
+// 要新增的資料放置(map[欄位]數值)
 type H map[string]interface{}
 
 // SQLComponent is a sql components set.
+// sql 指令元件
 type SQLComponent struct {
 	Fields     []string
 	Functions  []string
@@ -104,15 +107,17 @@ type Join struct {
 }
 
 // RawUpdate contains the expression and arguments.
+// 表達式及參數
 type RawUpdate struct {
 	Expression string
 	Args       []interface{}
 }
 
 // *******************************
-// internal help function
+// 輔助函式
+// sql 相關語法
 // *******************************
-
+// 顯示資料數
 func (sql *SQLComponent) getLimit() string {
 	if sql.Limit == "" {
 		return ""
@@ -120,6 +125,7 @@ func (sql *SQLComponent) getLimit() string {
 	return " limit " + sql.Limit + " "
 }
 
+// 跳過前面幾筆資料
 func (sql *SQLComponent) getOffset() string {
 	if sql.Offset == "" {
 		return ""
@@ -127,6 +133,7 @@ func (sql *SQLComponent) getOffset() string {
 	return " offset " + sql.Offset + " "
 }
 
+// 排列順序
 func (sql *SQLComponent) getOrderBy() string {
 	if sql.Order == "" {
 		return ""
@@ -134,6 +141,7 @@ func (sql *SQLComponent) getOrderBy() string {
 	return " order by " + sql.Order + " "
 }
 
+// 分組
 func (sql *SQLComponent) getGroupBy() string {
 	if sql.Group == "" {
 		return ""
@@ -141,6 +149,7 @@ func (sql *SQLComponent) getGroupBy() string {
 	return " group by " + sql.Group + " "
 }
 
+// join其他表
 func (sql *SQLComponent) getJoins(delimiter string) string {
 	if len(sql.Leftjoins) == 0 {
 		return ""
@@ -152,6 +161,7 @@ func (sql *SQLComponent) getJoins(delimiter string) string {
 	return joins
 }
 
+// 取得特定欄位
 func (sql *SQLComponent) getFields(delimiter string) string {
 	if len(sql.Fields) == 0 {
 		return "*"
@@ -188,6 +198,7 @@ func wrap(delimiter, field string) string {
 	return delimiter + field + delimiter
 }
 
+// where = ...
 func (sql *SQLComponent) getWheres(delimiter string) string {
 	if len(sql.Wheres) == 0 {
 		if sql.WhereRaws != "" {
@@ -198,6 +209,7 @@ func (sql *SQLComponent) getWheres(delimiter string) string {
 	wheres := " where "
 	var arr []string
 	for _, where := range sql.Wheres {
+		//arr[0]為資料表名稱
 		arr = strings.Split(where.Field, ".")
 		if len(arr) > 1 {
 			wheres += arr[0] + "." + wrap(delimiter, arr[1]) + " " + where.Operation + " " + where.Qmark + " and "
@@ -212,6 +224,7 @@ func (sql *SQLComponent) getWheres(delimiter string) string {
 	return wheres[:len(wheres)-5]
 }
 
+// update語法
 func (sql *SQLComponent) prepareUpdate(delimiter string) {
 	fields := ""
 	args := make([]interface{}, 0)
@@ -256,6 +269,7 @@ func (sql *SQLComponent) prepareUpdate(delimiter string) {
 	sql.Statement = "update " + sql.TableName + " set " + fields + sql.getWheres(delimiter)
 }
 
+// 插入數值語法
 func (sql *SQLComponent) prepareInsert(delimiter string) {
 	fields := " ("
 	quesMark := "("

@@ -308,11 +308,17 @@ func Fatalf(template string, args ...interface{}) {
 }
 
 // Access print the access message.
+// 印出訪問訊息在終端機上
 func Access(ctx *context.Context) {
 	if !logger.accessLogOff && logger.Level <= zapcore.InfoLevel {
+		// InfoLevel = 0
 		temp := "[GoAdmin] %s %s %s"
 		if logger.accessAssetsLogOff {
+			// Ext回傳參數使用的文件名
+			// Path回傳Request url path
 			if filepath.Ext(ctx.Path()) == "" {
+				// Warnf紀錄模板訊息
+				// ex: 2020-07-02T14:26:14.710+0800    logger/logger.go:324    [GoAdmin] [37;44m 200 [0m [37;104m GET   [0m /admin/assets/dist/css/fonts/6xKydSBYKcSV-LCoeQqfX1RYOo3ig4vwlxdr.ttf
 				logger.sugaredLogger.Warnf(temp,
 					ansi.Color(" "+strconv.Itoa(ctx.Response.StatusCode)+" ", "white:blue"),
 					ansi.Color(" "+string(ctx.Method()[:])+"   ", "white:blue+h"),
@@ -328,6 +334,7 @@ func Access(ctx *context.Context) {
 }
 
 // LogSQL print the sql info message.
+// 印出sql資訊
 func LogSQL(statement string, args []interface{}) {
 
 	if !logger.infoLogOff && logger.sqlLogOpen && statement != "" {

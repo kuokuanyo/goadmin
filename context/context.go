@@ -266,22 +266,29 @@ func (ctx *Context) HTMLByte(code int, body []byte) {
 }
 
 // WriteString save the given body string into the response.
+// 將參數body保存至Context.response.Body中
 func (ctx *Context) WriteString(body string) {
 	ctx.Response.Body = ioutil.NopCloser(strings.NewReader(body))
 }
 
 // SetStatusCode save the given status code into the response.
+// 將參數設置至Context.Response.StatusCode
 func (ctx *Context) SetStatusCode(code int) {
 	ctx.Response.StatusCode = code
 }
 
 // SetContentType save the given content type header into the response header.
+// HeaderContentType = Content-Type
+// 將參數添加至Content-Type
 func (ctx *Context) SetContentType(contentType string) {
 	ctx.AddHeader(HeaderContentType, contentType)
 }
 
+// 設定上次修改時間
 func (ctx *Context) SetLastModified(modtime time.Time) {
 	if !IsZeroTime(modtime) {
+		// HeaderLastModified = Last-Modified
+		// 添加header
 		ctx.AddHeader(HeaderLastModified, modtime.UTC().Format(http.TimeFormat)) // or modtime.UTC()?
 	}
 }
@@ -289,6 +296,7 @@ func (ctx *Context) SetLastModified(modtime time.Time) {
 var unixEpochTime = time.Unix(0, 0)
 
 // IsZeroTime reports whether t is obviously unspecified (either zero or Unix()=0).
+// 是否time is 0
 func IsZeroTime(t time.Time) bool {
 	return t.IsZero() || t.Equal(unixEpochTime)
 }
@@ -297,6 +305,7 @@ func IsZeroTime(t time.Time) bool {
 // trying each forth formats
 // that are allowed by HTTP/1.1:
 // time.RFC850, and time.ANSIC.
+// 解析時間
 var ParseTime = func(text string) (t time.Time, err error) {
 	t, err = time.Parse(http.TimeFormat, text)
 	if err != nil {
@@ -306,6 +315,7 @@ var ParseTime = func(text string) (t time.Time, err error) {
 	return
 }
 
+// 清除Context.Response.Header裡的Content-Type、Content-Length、Last-Modified
 func (ctx *Context) WriteNotModified() {
 	// RFC 7232 section 4.1:
 	// a sender SHOULD NOT generate representation metadata other than the
@@ -317,13 +327,16 @@ func (ctx *Context) WriteNotModified() {
 	if ctx.Headers(HeaderETag) != "" {
 		delete(ctx.Response.Header, HeaderLastModified)
 	}
+	// 304(未修改)
 	ctx.SetStatusCode(http.StatusNotModified)
 }
 
+// 檢查是否修改過
 func (ctx *Context) CheckIfModifiedSince(modtime time.Time) (bool, error) {
 	if method := ctx.Method(); method != http.MethodGet && method != http.MethodHead {
 		return false, errors.New("skip: method")
 	}
+	//HeaderIfModifiedSince = If-Modified-Since
 	ims := ctx.Headers(HeaderIfModifiedSince)
 	if ims == "" || IsZeroTime(modtime) {
 		return false, errors.New("skip: zero time")
@@ -341,6 +354,7 @@ func (ctx *Context) CheckIfModifiedSince(modtime time.Time) (bool, error) {
 }
 
 // LocalIP return the request client ip.
+// 回傳用戶端IP
 func (ctx *Context) LocalIP() string {
 	xForwardedFor := ctx.Request.Header.Get("X-Forwarded-For")
 	ip := strings.TrimSpace(strings.Split(xForwardedFor, ",")[0])
@@ -361,6 +375,7 @@ func (ctx *Context) LocalIP() string {
 }
 
 // SetCookie save the given cookie obj into the response Set-Cookie header.
+// 設置cookie在response header Set-Cookie中
 func (ctx *Context) SetCookie(cookie *http.Cookie) {
 	if v := cookie.String(); v != "" {
 		ctx.AddHeader("Set-Cookie", v)
@@ -368,11 +383,13 @@ func (ctx *Context) SetCookie(cookie *http.Cookie) {
 }
 
 // Query get the query parameter of url.
+// 取得Request url(在url中)裡的參數(key)
 func (ctx *Context) Query(key string) string {
 	return ctx.Request.URL.Query().Get(key)
 }
 
 // QueryDefault get the query parameter of url. If it is empty, return the default.
+// 取得url的查詢參數(類似過濾條件)，如果為空返回預設值(第二個參數參數)
 func (ctx *Context) QueryDefault(key, def string) string {
 	value := ctx.Query(key)
 	if value == "" {
@@ -382,54 +399,67 @@ func (ctx *Context) QueryDefault(key, def string) string {
 }
 
 // Headers get the value of request headers key.
+// 藉由參數key獲得Header
 func (ctx *Context) Headers(key string) string {
 	return ctx.Request.Header.Get(key)
 }
 
 // FormValue get the value of request form key.
+// 藉由參數key取得multipart/form-data中的值
 func (ctx *Context) FormValue(key string) string {
 	return ctx.Request.FormValue(key)
 }
 
 // PostForm get the values of request form.
+// 取得表單的值(所有)，將參數放於multipart/form-data.
 func (ctx *Context) PostForm() url.Values {
 	_ = ctx.Request.ParseMultipartForm(32 << 20)
 	return ctx.Request.PostForm
 }
 
+// 判斷method是否為get以及header裡包含accept:html
 func (ctx *Context) WantHTML() bool {
 	return ctx.Method() == "GET" && strings.Contains(ctx.Headers("Accept"), "html")
 }
 
+// 判斷header裡包含accept:json
 func (ctx *Context) WantJSON() bool {
 	return strings.Contains(ctx.Headers("Accept"), "json")
 }
 
 // AddHeader adds the key, value pair to the header.
+// 將參數(key、value)添加header中(Context.Response.Header)
 func (ctx *Context) AddHeader(key, value string) {
 	ctx.Response.Header.Add(key, value)
 }
 
 // PjaxUrl add pjax url header.
+// 添加pjax url header
 func (ctx *Context) PjaxUrl(url string) {
 	ctx.Response.Header.Add(constant.PjaxUrlHeader, url)
 }
 
 // IsPjax check request is pjax or not.
+// 判斷是否header X-PJAX:true
 func (ctx *Context) IsPjax() bool {
+	// constant.PjaxHeader = X-PJAX
+	// 藉由參數key獲得鍵的value
 	return ctx.Headers(constant.PjaxHeader) == "true"
 }
 
 // SetHeader set the key, value pair to the header.
+// 設定header
 func (ctx *Context) SetHeader(key, value string) {
 	ctx.Response.Header.Set(key, value)
 }
 
+// 取得Context.Request.Header
 func (ctx *Context) GetContentType() string {
 	return ctx.Request.Header.Get("")
 }
 
 // User return the current login user.
+// 回傳目前登入的用戶(Context.UserValue["user"])
 func (ctx *Context) User() interface{} {
 	return ctx.UserValue["user"]
 }
@@ -439,13 +469,18 @@ func (ctx *Context) User() interface{} {
 //
 // You can define your own "Content-Type" header also, after this function call
 // Doesn't implements resuming (by range), use ctx.SendFile instead
+// 自動設置headers，可以自定義Content-Type，讀取內容並設置至Context.Response.Body 
 func (ctx *Context) ServeContent(content io.ReadSeeker, filename string, modtime time.Time, gzipCompression bool) error {
+	// 檢查是否修改過
 	if modified, err := ctx.CheckIfModifiedSince(modtime); !modified && err == nil {
+		// 清除Context.Response.Header裡的Content-Type、Content-Length、Last-Modified
 		ctx.WriteNotModified()
 		return nil
 	}
 
+	// 取得Context.Request.Header
 	if ctx.GetContentType() == "" {
+		// 將參數添加至Content-Type
 		ctx.SetContentType(filename)
 	}
 
@@ -456,6 +491,7 @@ func (ctx *Context) ServeContent(content io.ReadSeeker, filename string, modtime
 
 // ServeFile serves a view file, to send a file ( zip for example) to the client you should use the SendFile(serverfilename,clientfilename)
 func (ctx *Context) ServeFile(filename string, gzipCompression bool) error {
+	// open file
 	f, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("%d", http.StatusNotFound)
@@ -463,7 +499,9 @@ func (ctx *Context) ServeFile(filename string, gzipCompression bool) error {
 	defer func() {
 		_ = f.Close()
 	}()
+	// 回傳檔案的描述結構
 	fi, _ := f.Stat()
+	// 檢查是否有檔案
 	if fi.IsDir() {
 		return ctx.ServeFile(path.Join(filename, "index.html"), gzipCompression)
 	}
@@ -477,17 +515,18 @@ type HandlerMap map[Path]Handlers
 // entity contains the request and the corresponding handler. Prefix
 // is the url prefix and MiddlewareList is for control flow.
 type App struct {
-	Requests    []Path
-	Handlers    HandlerMap
+	Requests    []Path //Path包含url、method
+	Handlers    HandlerMap // HandlerMap是 map[Path]Handlers，Handlers類別為[]Handler，Handler類別為func(ctx *Context)
 	Middlewares Handlers
 	Prefix      string
 
-	Routers    RouterMap
+	Routers    RouterMap // RouterMap類別為map[string]Router，Router(struct)裡有methods、patten
 	routeIndex int
 	routeANY   bool
 }
 
 // NewApp return an empty app.
+// 回傳新的app(struct)，空的
 func NewApp() *App {
 	return &App{
 		Requests:    make([]Path, 0),
@@ -500,7 +539,7 @@ func NewApp() *App {
 }
 
 // Handler defines the handler used by the middleware as return value.
-type Handler func(ctx *Context)
+type Handler func(ctx *Context) // 用於middleware 
 
 // Handlers is the array of Handler
 type Handlers []Handler
@@ -514,14 +553,17 @@ type Handlers []Handler
 //
 // The RegUrl will be used to recognize the incoming path and find
 // the handler.
+// 在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) AppendReqAndResp(url, method string, handler []Handler) {
 
+	//新增Path
 	app.Requests = append(app.Requests, Path{
 		URL:    join(app.Prefix, url),
 		Method: method,
 	})
 	app.routeIndex++
 
+	// 新增Middlewares至Handlers
 	app.Handlers[Path{
 		URL:    join(app.Prefix, url),
 		Method: method,
@@ -529,12 +571,14 @@ func (app *App) AppendReqAndResp(url, method string, handler []Handler) {
 }
 
 // Find is public helper method for findPath of tree.
+// 尋找app.Handlers(map[Path]Handlers)中匹配的Path(struct)
 func (app *App) Find(url, method string) []Handler {
 	app.routeANY = false
 	return app.Handlers[Path{URL: url, Method: method}]
 }
 
 // POST is a shortcut for app.AppendReqAndResp(url, "post", handler).
+// POST等於在AppendReqAndResp(url, "post", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) POST(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "post", handler)
@@ -542,6 +586,7 @@ func (app *App) POST(url string, handler ...Handler) *App {
 }
 
 // GET is a shortcut for app.AppendReqAndResp(url, "get", handler).
+// GET等於在AppendReqAndResp(url, "get", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) GET(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "get", handler)
@@ -549,6 +594,7 @@ func (app *App) GET(url string, handler ...Handler) *App {
 }
 
 // DELETE is a shortcut for app.AppendReqAndResp(url, "delete", handler).
+// DELETE等於在AppendReqAndResp(url, "delete", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) DELETE(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "delete", handler)
@@ -556,6 +602,7 @@ func (app *App) DELETE(url string, handler ...Handler) *App {
 }
 
 // PUT is a shortcut for app.AppendReqAndResp(url, "put", handler).
+// PUT等於在AppendReqAndResp(url, "put", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) PUT(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "put", handler)
@@ -563,6 +610,7 @@ func (app *App) PUT(url string, handler ...Handler) *App {
 }
 
 // OPTIONS is a shortcut for app.AppendReqAndResp(url, "options", handler).
+// OPTIONS等於在AppendReqAndResp(url, "options", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) OPTIONS(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "options", handler)
@@ -570,6 +618,7 @@ func (app *App) OPTIONS(url string, handler ...Handler) *App {
 }
 
 // HEAD is a shortcut for app.AppendReqAndResp(url, "head", handler).
+// HEAD等於在AppendReqAndResp(url, "head", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) HEAD(url string, handler ...Handler) *App {
 	app.routeANY = false
 	app.AppendReqAndResp(url, "head", handler)
@@ -578,6 +627,7 @@ func (app *App) HEAD(url string, handler ...Handler) *App {
 
 // ANY registers a route that matches all the HTTP methods.
 // GET, POST, PUT, HEAD, OPTIONS, DELETE.
+// 執行所有方法的AppendReqAndResp(url, "head", handler)，在App(struct)新增Requests([]Path)路徑、Middlewares至Handlers
 func (app *App) ANY(url string, handler ...Handler) *App {
 	app.routeANY = true
 	app.AppendReqAndResp(url, "post", handler)
@@ -589,8 +639,11 @@ func (app *App) ANY(url string, handler ...Handler) *App {
 	return app
 }
 
+// 將參數設置至App.Routers(RouterMap)中，設定methods及patten(url)
 func (app *App) Name(name string) {
 	if app.routeANY {
+		// Routers(RouterMap)類別為map[string]Router，Router(struct)裡有methods、patten
+		//新增所有方法
 		app.Routers[name] = Router{
 			Methods: []string{"POST", "GET", "DELETE", "PUT", "OPTIONS", "HEAD"},
 			Patten:  app.Requests[app.routeIndex].URL,
@@ -604,6 +657,7 @@ func (app *App) Name(name string) {
 }
 
 // Group add middlewares and prefix for App.
+// 將參數prefix、middleware新增至RouterGroup(struct)
 func (app *App) Group(prefix string, middleware ...Handler) *RouterGroup {
 	return &RouterGroup{
 		app:         app,
@@ -614,8 +668,8 @@ func (app *App) Group(prefix string, middleware ...Handler) *RouterGroup {
 
 // RouterGroup is a group of routes.
 type RouterGroup struct {
-	app         *App
-	Middlewares Handlers
+	app         *App //struct
+	Middlewares Handlers //Handlers([]Handler)，Handler類別為 func(ctx *Context)
 	Prefix      string
 }
 
@@ -628,6 +682,7 @@ type RouterGroup struct {
 //
 // The RegUrl will be used to recognize the incoming path and find
 // the handler.
+// 在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) AppendReqAndResp(url, method string, handler []Handler) {
 
 	g.app.Requests = append(g.app.Requests, Path{
@@ -646,6 +701,7 @@ func (g *RouterGroup) AppendReqAndResp(url, method string, handler []Handler) {
 }
 
 // POST is a shortcut for app.AppendReqAndResp(url, "post", handler).
+// POST等於在AppendReqAndResp(url, "post", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) POST(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "post", handler)
@@ -653,6 +709,7 @@ func (g *RouterGroup) POST(url string, handler ...Handler) *RouterGroup {
 }
 
 // GET is a shortcut for app.AppendReqAndResp(url, "get", handler).
+// GET等於在AppendReqAndResp(url, "get", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) GET(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "get", handler)
@@ -660,6 +717,7 @@ func (g *RouterGroup) GET(url string, handler ...Handler) *RouterGroup {
 }
 
 // DELETE is a shortcut for app.AppendReqAndResp(url, "delete", handler).
+// DELETE等於在AppendReqAndResp(url, "delete", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) DELETE(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "delete", handler)
@@ -667,6 +725,7 @@ func (g *RouterGroup) DELETE(url string, handler ...Handler) *RouterGroup {
 }
 
 // PUT is a shortcut for app.AppendReqAndResp(url, "put", handler).
+// PUT等於在AppendReqAndResp(url, "put", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) PUT(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "put", handler)
@@ -674,6 +733,7 @@ func (g *RouterGroup) PUT(url string, handler ...Handler) *RouterGroup {
 }
 
 // OPTIONS is a shortcut for app.AppendReqAndResp(url, "options", handler).
+// OPTIONS等於在AppendReqAndResp(url, "options", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) OPTIONS(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "options", handler)
@@ -681,6 +741,7 @@ func (g *RouterGroup) OPTIONS(url string, handler ...Handler) *RouterGroup {
 }
 
 // HEAD is a shortcut for app.AppendReqAndResp(url, "head", handler).
+// HEAD等於在AppendReqAndResp(url, "head", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) HEAD(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = false
 	g.AppendReqAndResp(url, "head", handler)
@@ -689,6 +750,7 @@ func (g *RouterGroup) HEAD(url string, handler ...Handler) *RouterGroup {
 
 // ANY registers a route that matches all the HTTP methods.
 // GET, POST, PUT, HEAD, OPTIONS, DELETE.
+// 執行所有方法的AppendReqAndResp(url, "head", handler)，在RouterGroup.app(struct)中新增Requests([]Path)路徑及方法、接著在該url中新增參數handler(Handler...)
 func (g *RouterGroup) ANY(url string, handler ...Handler) *RouterGroup {
 	g.app.routeANY = true
 	g.AppendReqAndResp(url, "post", handler)
@@ -700,11 +762,14 @@ func (g *RouterGroup) ANY(url string, handler ...Handler) *RouterGroup {
 	return g
 }
 
+// 將參數設置至App.Routers(RouterMap)中，設定methods及patten(url)
 func (g *RouterGroup) Name(name string) {
+	// RouterGroup.App(struct)的Name方法
 	g.app.Name(name)
 }
 
 // Group add middlewares and prefix for RouterGroup.
+// 將參數prefix、middleware新增至RouterGroup(struct)
 func (g *RouterGroup) Group(prefix string, middleware ...Handler) *RouterGroup {
 	return &RouterGroup{
 		app:         g.app,
@@ -721,6 +786,7 @@ func (g *RouterGroup) Group(prefix string, middleware ...Handler) *RouterGroup {
 // 	 "/abc"  => "/abc"
 // 	 "/"     => "/"
 //
+// 處理斜線(路徑)
 func slash(prefix string) string {
 	prefix = strings.TrimSpace(prefix)
 	if prefix == "" || prefix == "/" {
@@ -739,6 +805,7 @@ func slash(prefix string) string {
 }
 
 // join join the path.
+// join路徑
 func join(prefix, suffix string) string {
 	if prefix == "/" {
 		return suffix

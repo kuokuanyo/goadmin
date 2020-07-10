@@ -143,6 +143,8 @@ func (f FieldDisplay) ToDisplayStringArrayArray(value FieldModel) [][]string {
 	}
 }
 
+// 加入func(value string) string至FieldDisplay.DisplayProcessFnChains([]DisplayProcessFn)
+// 透過參數limit判斷func(value string)回傳的值
 func (f FieldDisplay) AddLimit(limit int) DisplayProcessFnChains {
 	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
 		if limit > len(value.Value) {
@@ -155,6 +157,8 @@ func (f FieldDisplay) AddLimit(limit int) DisplayProcessFnChains {
 	})
 }
 
+// 加入func(value string) string至FieldDisplay.DisplayProcessFnChains([]DisplayProcessFn)
+// func(value string)回傳值為strings.TrimSpace(value)
 func (f FieldDisplay) AddTrimSpace() DisplayProcessFnChains {
 	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
 		return strings.TrimSpace(value.Value)
@@ -176,6 +180,7 @@ func (f FieldDisplay) AddSubstr(start int, end int) DisplayProcessFnChains {
 	})
 }
 
+// 加入func(value string) string至FieldDisplay.DisplayProcessFnChains([]DisplayProcessFn)
 func (f FieldDisplay) AddToTitle() DisplayProcessFnChains {
 	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
 		return strings.Title(value.Value)
@@ -200,6 +205,7 @@ func (d DisplayProcessFnChains) Valid() bool {
 	return len(d) > 0
 }
 
+// 將參數f(func(string) string)加入globalDisplayProcessChains([]DisplayProcessFn)
 func (d DisplayProcessFnChains) Add(f FieldFilterFn) DisplayProcessFnChains {
 	return append(d, f)
 }
@@ -225,44 +231,65 @@ func chooseDisplayProcessChains(internal DisplayProcessFnChains) DisplayProcessF
 	return globalDisplayProcessChains.Copy()
 }
 
+// globalDisplayProcessChains類別為[]DisplayProcessFn，DisplayProcessFn類別為func(string) string
 var globalDisplayProcessChains = make(DisplayProcessFnChains, 0)
 
+// 將參數f(func(string) string)加入globalDisplayProcessChains([]DisplayProcessFn)
 func AddGlobalDisplayProcessFn(f FieldFilterFn) {
+	// type DisplayProcessFn func(string) string
 	globalDisplayProcessChains = globalDisplayProcessChains.Add(f)
 }
 
+// 加入func(value string) string至參數globalDisplayProcessChains([]DisplayProcessFn)
+// 透過參數limit判斷func(value string)回傳的值
 func AddLimit(limit int) DisplayProcessFnChains {
 	return addLimit(limit, globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至參數globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為strings.TrimSpace(value)
 func AddTrimSpace() DisplayProcessFnChains {
 	return addTrimSpace(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至參數globalDisplayProcessChains([]DisplayProcessFn)
+// 透過參數start、end判斷func(value string)回傳的值
 func AddSubstr(start int, end int) DisplayProcessFnChains {
 	return addSubstr(start, end, globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為strings.Title(value)
 func AddToTitle() DisplayProcessFnChains {
 	return addToTitle(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為strings.ToUpper(value)
 func AddToUpper() DisplayProcessFnChains {
 	return addToUpper(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為strings.ToLower(value)
 func AddToLower() DisplayProcessFnChains {
 	return addToLower(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為html.EscapeString(value)
 func AddXssFilter() DisplayProcessFnChains {
 	return addXssFilter(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至globalDisplayProcessChains([]DisplayProcessFn)
+// func(value string)回傳值為replacer.Replace(value)
 func AddXssJsFilter() DisplayProcessFnChains {
 	return addXssJsFilter(globalDisplayProcessChains)
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// 透過參數limit判斷func(value string)回傳的值
 func addLimit(limit int, chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		if limit > len(value.Value) {
@@ -276,6 +303,8 @@ func addLimit(limit int, chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為strings.TrimSpace(value)
 func addTrimSpace(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		return strings.TrimSpace(value.Value)
@@ -283,6 +312,8 @@ func addTrimSpace(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// 透過參數start、end判斷func(value string)回傳的值
 func addSubstr(start int, end int, chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		if start > end || start > len(value.Value) || end < 0 {
@@ -299,6 +330,8 @@ func addSubstr(start int, end int, chains DisplayProcessFnChains) DisplayProcess
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為strings.Title(value)
 func addToTitle(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		return strings.Title(value.Value)
@@ -306,6 +339,8 @@ func addToTitle(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為strings.ToUpper(value)
 func addToUpper(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		return strings.ToUpper(value.Value)
@@ -313,6 +348,8 @@ func addToUpper(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為strings.ToLower(value)
 func addToLower(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		return strings.ToLower(value.Value)
@@ -320,6 +357,8 @@ func addToLower(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為html.EscapeString(value)
 func addXssFilter(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		return html.EscapeString(value.Value)
@@ -327,6 +366,8 @@ func addXssFilter(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	return chains
 }
 
+// 加入func(value string) string至參數chains([]DisplayProcessFn)
+// func(value string)回傳值為replacer.Replace(value)
 func addXssJsFilter(chains DisplayProcessFnChains) DisplayProcessFnChains {
 	chains = chains.Add(func(value FieldModel) interface{} {
 		replacer := strings.NewReplacer("<script>", "&lt;script&gt;", "</script>", "&lt;/script&gt;")

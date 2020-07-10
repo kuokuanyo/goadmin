@@ -10,16 +10,20 @@ import (
 )
 
 // SQLTx is an in-progress database transaction.
+// 正在進行程序
+// 程序必須以Commit 或 Rollback方式結束
 type SQLTx struct {
 	Tx *sql.Tx
 }
 
 // Mysql is a Connection of mysql.
+// 在base.go中
 type Mysql struct {
 	Base
 }
 
 // GetMysqlDB return the global mysql connection.
+// 回傳 global mysql連接
 func GetMysqlDB() *Mysql {
 	return &Mysql{
 		Base: Base{
@@ -34,11 +38,13 @@ func (db *Mysql) Name() string {
 }
 
 // GetDelimiter implements the method Connection.GetDelimiter.
+// mysql 使用的分隔符
 func (db *Mysql) GetDelimiter() string {
 	return "`"
 }
 
 // InitDB implements the method Connection.InitDB.
+// 初始化資料庫連線並啟動引擎
 func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 	db.Once.Do(func() {
 		for conn, cfg := range cfgs {
@@ -62,7 +68,7 @@ func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 
 				db.DbList[conn] = sqlDB
 			}
-
+			//啟動資料庫引擎
 			if err := sqlDB.Ping(); err != nil {
 				panic(err)
 			}
@@ -72,21 +78,27 @@ func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 }
 
 // QueryWithConnection implements the method Connection.QueryWithConnection.
+// 有給定參數連接(conn)名稱，透過參數con查詢db.DbList[con]資料並回傳
 func (db *Mysql) QueryWithConnection(con string, query string, args ...interface{}) ([]map[string]interface{}, error) {
+	// CommonQuery查詢資料並回傳
 	return CommonQuery(db.DbList[con], query, args...)
 }
 
 // ExecWithConnection implements the method Connection.ExecWithConnection.
+// 有給定連接(conn)名稱
 func (db *Mysql) ExecWithConnection(con string, query string, args ...interface{}) (sql.Result, error) {
 	return CommonExec(db.DbList[con], query, args...)
 }
 
 // Query implements the method Connection.Query.
+// 沒有給定連接(conn)名稱，透過參數查詢db.DbList["default"]資料並回傳
 func (db *Mysql) Query(query string, args ...interface{}) ([]map[string]interface{}, error) {
+	// CommonQuery查詢資料並回傳
 	return CommonQuery(db.DbList["default"], query, args...)
 }
 
 // Exec implements the method Connection.Exec.
+// 沒有給定連接(conn)名稱
 func (db *Mysql) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return CommonExec(db.DbList["default"], query, args...)
 }
@@ -142,11 +154,17 @@ func (db *Mysql) BeginTxWithLevelAndConnection(conn string, level sql.IsolationL
 }
 
 // QueryWithTx is query method within the transaction.
+// QueryWithTx是transaction的查詢方法
 func (db *Mysql) QueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]map[string]interface{}, error) {
+	// 在performer.go中
+	// 與CommonQuery一樣
 	return CommonQueryWithTx(tx, query, args...)
 }
 
 // ExecWithTx is exec method within the transaction.
+// QueryWithTx是transaction的執行方法
 func (db *Mysql) ExecWithTx(tx *sql.Tx, query string, args ...interface{}) (sql.Result, error) {
+	// 在performer.go中
+	// 與CommonExec一樣
 	return CommonExecWithTx(tx, query, args...)
 }

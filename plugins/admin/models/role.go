@@ -10,6 +10,7 @@ import (
 
 // RoleModel is role model structure.
 type RoleModel struct {
+	//plugins/admin/models/base.go中
 	Base
 
 	Id        int64
@@ -20,6 +21,7 @@ type RoleModel struct {
 }
 
 // Role return a default role model.
+// 初始化role model
 func Role() RoleModel {
 	return RoleModel{Base: Base{TableName: "goadmin_roles"}}
 }
@@ -117,6 +119,7 @@ func (t RoleModel) AddPermission(permissionId string) (int64, error) {
 }
 
 // MapToModel get the role model from given map.
+// 將map設置至role model
 func (t RoleModel) MapToModel(m map[string]interface{}) RoleModel {
 	t.Id = m["id"].(int64)
 	t.Name, _ = m["name"].(string)

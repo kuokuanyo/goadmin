@@ -162,10 +162,17 @@ func alert(ctx *context.Context, panel table.Table, msg string, conn db.Connecti
 	}
 }
 
+// Alert透過參數ctx回傳目前登入的用戶(Context.UserValue["user"])並轉換成UserModel，接著將給定的數據(types.Page(struct))寫入buf(struct)並回傳，最後輸出HTML
 func alertWithTitleAndDesc(ctx *context.Context, title, desc, msg string, conn db.Connection, btns *types.Buttons) {
+	// Alert在plugins\admin\modules\response\response.go
+	// Alert透過參數ctx回傳目前登入的用戶(Context.UserValue["user"])並轉換成UserModel，接著將給定的數據(types.Page(struct))寫入buf(struct)並回傳，最後輸出HTML
+	// 將參數desc、title、msg寫入Panel
 	response.Alert(ctx, desc, title, msg, conn, btns)
 }
 
 func getAlert(msg string) tmpl.HTML {
+	// GetTheme回傳globalCfg.Theme
+	// Get判斷templateMap(map[string]Template)的key鍵是否參數theme，有則回傳Template(interface)
+	// Alert為Template(interface)的方法
 	return template.Get(config.GetTheme()).Alert().Warning(msg)
 }

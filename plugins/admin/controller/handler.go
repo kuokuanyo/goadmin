@@ -18,10 +18,15 @@ import (
 )
 
 // GlobalDeferHandler is a global error handler of admin plugin.
+// 印出訪問訊息在終端機上並記錄所有操作行為至資料表(goadmin_operation_log)中
 func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 
+	// 在modules\logger\logger.go
+	// 印出訪問訊息在終端機上
 	logger.Access(ctx)
 
+	// 在plugins\admin\controller\operation_log.go
+	// 記錄所有操作行為至資料表(goadmin_operation_log)中
 	h.RecordOperationLog(ctx)
 
 	if err := recover(); err != nil {
@@ -44,6 +49,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 			errMsg = "system error"
 		}
 
+		// 判斷header裡包含accept:json
 		if ctx.WantJSON() {
 			response.Error(ctx, errMsg)
 			return
@@ -58,6 +64,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 			return
 		}
 
+		// 將參數設置至ExecuteParam(struct)，接著將給定的數據(types.Page(struct))寫入buf(struct)並輸出HTML至Context.response.Body
 		h.HTML(ctx, auth.Auth(ctx), types.Panel{
 			Content:     aAlert().Warning(errMsg),
 			Description: template2.HTML(errors.Msg),

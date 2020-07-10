@@ -27,6 +27,7 @@ import (
 
 // Template is the interface which contains methods of ui components.
 // It will be used in the plugins for custom the ui.
+// ui組件的方法，將在plugins中自定義ui
 type Template interface {
 	Name() string
 
@@ -116,6 +117,7 @@ var templateMap = make(map[string]Template)
 
 // Get the template interface by theme name. If the
 // name is not found, it panics.
+// 判斷templateMap(map[string]Template)的key鍵是否參數theme，有則回傳Template(interface)
 func Get(theme string) Template {
 	if temp, ok := templateMap[theme]; ok {
 		return temp
@@ -125,7 +127,10 @@ func Get(theme string) Template {
 
 // Default get the default template with the theme name set with the global config.
 // If the name is not found, it panics.
+// 如果主題名稱已經通過全局配置，取得預設的Template(interface)
 func Default() Template {
+	// 如主題名稱已經通過配置回傳true
+	// GetTheme回傳globalCfg.Theme(在modules\config\config.go)
 	if temp, ok := templateMap[c.GetTheme()]; ok {
 		return temp
 	}
@@ -265,19 +270,24 @@ type Component interface {
 	GetName() string
 }
 
+// GetLoginComponent設置Login(struct)並回傳
+// Login(struct)也是Component(interface)
 var compMap = map[string]Component{
 	"login": login.GetLoginComponent(),
 }
 
 // GetComp gets the component by registered name. If the
 // name is not found, it panics.
+// 判斷map[string]Component是否有參數name(key)的值，有的話則回傳Component(interface)
 func GetComp(name string) Component {
+	// Component(interface)
 	if comp, ok := compMap[name]; ok {
 		return comp
 	}
 	panic("wrong component name")
 }
 
+// 檢查compMap(map[string]Component)的物件一一加入陣列([]string)中
 func GetComponentAsset() []string {
 	assets := make([]string, 0)
 	for _, comp := range compMap {
@@ -286,6 +296,7 @@ func GetComponentAsset() []string {
 	return assets
 }
 
+// 檢查compMap(map[string]Component)的物件是否符合條件並加入陣列([]string)中
 func GetComponentAssetWithinPage() []string {
 	assets := make([]string, 0)
 	for _, comp := range compMap {
@@ -296,17 +307,25 @@ func GetComponentAssetWithinPage() []string {
 	return assets
 }
 
+// 處理asset後並回傳HTML語法
 func GetComponentAssetImportHTML() (res template.HTML) {
+	// Default()取得預設的template(主題名稱已經通過全局配置)
+	// GetExcludeThemeComponents(在modules\config\config.go)，取得globalCfg.ExcludeThemeComponents([]string)
+	// GetAssetImportHTML(Template(interface)的方法)
+	// res為所使用的js語言
 	res = Default().GetAssetImportHTML(c.GetExcludeThemeComponents()...)
-
+	// 在頁面中獲取物件asset
+	// 檢查map[string]Component物件是否符合條件並加入陣列([]string)中
 	assets := GetComponentAssetWithinPage()
 
 	for i := 0; i < len(assets); i++ {
+		// 透過參數assets[i]判斷css或js檔案，取得HTML
 		res += getHTMLFromAssetUrl(assets[i])
 	}
 	return
 }
 
+// 透過參數s判斷css或js檔案，取得HTML
 func getHTMLFromAssetUrl(s string) template.HTML {
 	switch path.Ext(s) {
 	case ".css":
@@ -318,6 +337,7 @@ func getHTMLFromAssetUrl(s string) template.HTML {
 	}
 }
 
+// 對map[string]Component迴圈，對每一個Component(interface)執行GetAsset方法
 func GetAsset(path string) ([]byte, error) {
 	for _, comp := range compMap {
 		res, err := comp.GetAsset(path)
@@ -377,9 +397,14 @@ type ExecuteParam struct {
 	Iframe     bool
 }
 
+// 將給定的數據(types.Page(struct))寫入buf(struct)並回傳
 func Execute(param ExecuteParam) *bytes.Buffer {
 
 	buf := new(bytes.Buffer)
+	// ExecuteTemplate為html/template套件
+	// ExecuteTemplate將給定的數據(第三個參數)寫入參數buf
+	// NewPageParam(struct)在template\types\page.go中
+	// NewPage將NewPageParam(struct)的值設置至Page(struct)並回傳
 	err := param.Tmpl.ExecuteTemplate(buf, param.TmplName,
 		types.NewPage(types.NewPageParam{
 			User:         param.User,
@@ -397,6 +422,7 @@ func Execute(param ExecuteParam) *bytes.Buffer {
 	return buf
 }
 
+// 透過參數msg設置Panel(struct)
 func WarningPanel(msg string, pts ...PageType) types.Panel {
 	pt := Error500Page
 	if len(pts) > 0 {
@@ -404,6 +430,8 @@ func WarningPanel(msg string, pts ...PageType) types.Panel {
 	}
 	pageTitle, description, content := GetPageContentFromPageType(msg, msg, msg, pt)
 	return types.Panel{
+		// Default()取得預設的template(主題名稱已經通過全局配置)
+		// Alert為Template(interface)的方法
 		Content:     content,
 		Description: description,
 		Title:       pageTitle,

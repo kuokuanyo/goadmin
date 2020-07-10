@@ -25,17 +25,23 @@ const (
 )
 
 // Connection is a connection handler of database.
+// 資料庫連接的處理程序
+// 方法建立在資料庫引擎名稱.go中(使用mysql(/modules/db/mysql.go中))
 type Connection interface {
 	// Query is the query method of sql.
+	// 查詢
 	Query(query string, args ...interface{}) ([]map[string]interface{}, error)
 
 	// Exec is the exec method of sql.
+	// 執行
 	Exec(query string, args ...interface{}) (sql.Result, error)
 
 	// QueryWithConnection is the query method with given connection of sql.
+	// 查詢(有給定sql連接)
 	QueryWithConnection(conn, query string, args ...interface{}) ([]map[string]interface{}, error)
 
 	// ExecWithConnection is the exec method with given connection of sql.
+	// 執行(有給定sql連接)
 	ExecWithConnection(conn, query string, args ...interface{}) (sql.Result, error)
 
 	QueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]map[string]interface{}, error)
@@ -55,6 +61,7 @@ type Connection interface {
 	BeginTxWithLevelAndConnection(conn string, level sql.IsolationLevel) *sql.Tx
 
 	// InitDB initialize the database connections.
+	// 初始化資料庫連接
 	InitDB(cfg map[string]config.Database) Connection
 
 	// GetName get the connection name.
@@ -69,6 +76,7 @@ type Connection interface {
 }
 
 // GetConnectionByDriver return the Connection by given driver name.
+// 藉由參數(driver = mysql、mssql...)取得Connection(interface)
 func GetConnectionByDriver(driver string) Connection {
 	switch driver {
 	case "mysql":
@@ -84,6 +92,7 @@ func GetConnectionByDriver(driver string) Connection {
 	}
 }
 
+// 將參數srv轉換為Connect(interface)回傳並回傳
 func GetConnectionFromService(srv interface{}) Connection {
 	if v, ok := srv.(Connection); ok {
 		return v
@@ -91,7 +100,12 @@ func GetConnectionFromService(srv interface{}) Connection {
 	panic("wrong service")
 }
 
+// service.List類別為map[string]Service，Service是interface(Name方法)
+// 取得匹配的service.Service然後轉換成Connection(interface)類別
 func GetConnection(srvs service.List) Connection {
+	// config.GetDatabases()設置DatabaseList，在modules\config\config.go
+	// GetDefault取得預設資料庫DatabaseList["default"]的值
+	// srvs.Get透過資料庫driver取的Service(interface)
 	if v, ok := srvs.Get(config.GetDatabases().GetDefault().Driver).(Connection); ok {
 		return v
 	}
@@ -145,6 +159,7 @@ var ignoreErrors = [...][]string{
 	},
 }
 
+//檢查是否有錯誤
 func CheckError(err error, t int) bool {
 	if err == nil {
 		return false

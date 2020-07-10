@@ -202,6 +202,7 @@ func ParseTableDataTmplWithID(id template.HTML, content string, value ...map[str
 }
 
 // Panel contains the main content of the template which used as pjax.
+// 主要內容使用pjax的模板
 type Panel struct {
 	Title       template.HTML
 	Description template.HTML
@@ -212,16 +213,20 @@ type Panel struct {
 	Url string
 
 	// Whether to toggle the sidebar
+	// 是否切換側邊攔
 	MiniSidebar bool
 
 	// Auto refresh page switch.
+	// 自動刷新頁面轉換
 	AutoRefresh bool
 	// Refresh page intervals, the unit is second.
+	// 刷新頁面間隔，單位為秒
 	RefreshInterval []int
 
 	Callbacks Callbacks
 }
 
+// 獲取Content(設置前端HTML語法)，設置Panel並回傳
 func (p Panel) GetContent(params ...bool) Panel {
 
 	prod := false
@@ -231,15 +236,17 @@ func (p Panel) GetContent(params ...bool) Panel {
 	}
 
 	animation := template.HTML("")
-	style := template.HTML("")
+	style := template.HTML("") // 處理css
 	remove := template.HTML("")
 	ani := config.GetAnimation()
 	if ani.Type != "" && (len(params) < 2 || params[1]) {
 		animation = template.HTML(` class='pjax-container-content animated ` + ani.Type + `'`)
 		if ani.Delay != 0 {
+			// 設置延遲
 			style = template.HTML(fmt.Sprintf(`animation-delay: %fs;-webkit-animation-delay: %fs;`, ani.Delay, ani.Delay))
 		}
 		if ani.Duration != 0 {
+			// 設定動畫持續時間
 			style = template.HTML(fmt.Sprintf(`animation-duration: %fs;-webkit-animation-duration: %fs;`, ani.Duration, ani.Duration))
 		}
 		if style != "" {
@@ -254,15 +261,17 @@ func (p Panel) GetContent(params ...bool) Panel {
 	}
 
 	p.Content = `<div` + animation + style + ">" + p.Content + "</div>" + remove
+	// 切換側邊攔
 	if p.MiniSidebar {
 		p.Content += `<script>$("body").addClass("sidebar-collapse")</script>`
 	}
+	// 自動刷新頁面轉換
 	if p.AutoRefresh {
 		refreshTime := 60
 		if len(p.RefreshInterval) > 0 {
 			refreshTime = p.RefreshInterval[0]
 		}
-
+		// 設定1000秒刷新一次頁面
 		p.Content += `<script>
 window.setTimeout(function(){
 	$.pjax.reload('#pjax-container');	
@@ -270,6 +279,7 @@ window.setTimeout(function(){
 </script>`
 	}
 	if prod {
+		// 壓縮內容
 		utils.CompressedContent(&p.Content)
 	}
 

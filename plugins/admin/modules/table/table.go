@@ -17,10 +17,12 @@ type Generator func(ctx *context.Context) Table
 
 type GeneratorList map[string]Generator
 
+// 透過參數key及gen(function)添加至GeneratorList(map[string]Generator)
 func (g GeneratorList) Add(key string, gen Generator) {
 	g[key] = gen
 }
 
+// 透過參數list判斷GeneratorList已經有該key、value，如果不存在則加入該鍵與值
 func (g GeneratorList) Combine(list GeneratorList) GeneratorList {
 	for key, gen := range list {
 		if _, ok := g[key]; !ok {
@@ -30,6 +32,7 @@ func (g GeneratorList) Combine(list GeneratorList) GeneratorList {
 	return g
 }
 
+// 透過參數gens判斷GeneratorList已經有該key、value，如果不存在則加入該鍵與值
 func (g GeneratorList) CombineAll(gens []GeneratorList) GeneratorList {
 	for _, list := range gens {
 		for key, gen := range list {
@@ -86,7 +89,10 @@ type BaseTable struct {
 	PrimaryKey     PrimaryKey
 }
 
+// 將參數值設置至base.Info(InfoPanel(struct)).primaryKey中後回傳
 func (base *BaseTable) GetInfo() *types.InfoPanel {
+	// 在template\types\info.go中
+	// 將參數值設置至InfoPanel(struct).primaryKey中後回傳
 	return base.Info.SetPrimaryKey(base.PrimaryKey.Name, base.PrimaryKey.Type)
 }
 
@@ -101,7 +107,10 @@ func (base *BaseTable) GetDetailFromInfo() *types.InfoPanel {
 	return detail
 }
 
+// 將參數值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳
 func (base *BaseTable) GetForm() *types.FormPanel {
+	// 在template\types\info.go中
+	// 將參數值設置至FormPanel(struct).primaryKey中後回傳
 	return base.Form.SetPrimaryKey(base.PrimaryKey.Name, base.PrimaryKey.Type)
 }
 

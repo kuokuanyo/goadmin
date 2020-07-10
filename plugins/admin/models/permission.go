@@ -8,6 +8,7 @@ import (
 
 // PermissionModel is permission model structure.
 type PermissionModel struct {
+	//plugins/admin/models/base.go中
 	Base
 
 	Id         int64
@@ -20,6 +21,7 @@ type PermissionModel struct {
 }
 
 // Permission return a default permission model.
+// 初始化permission model
 func Permission() PermissionModel {
 	return PermissionModel{Base: Base{TableName: "goadmin_permissions"}}
 }
@@ -72,6 +74,7 @@ func (t PermissionModel) FindByName(name string) PermissionModel {
 }
 
 // MapToModel get the permission model from given map.
+// 將map設置至permission model
 func (t PermissionModel) MapToModel(m map[string]interface{}) PermissionModel {
 	t.Id = m["id"].(int64)
 	t.Name, _ = m["name"].(string)

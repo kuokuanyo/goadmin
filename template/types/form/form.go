@@ -1,10 +1,11 @@
 package form
 
 import (
+	"html/template"
+
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/language"
-	"html/template"
 )
 
 type Type uint8
@@ -290,7 +291,13 @@ func (t Type) String() string {
 	}
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsSelect() bool {
+	// Select = 3
+	// SelectSingle = 2
+	// SelectBox = 5
+	// Radio = 12
+	// Switch = 2
 	return t == Select || t == SelectSingle || t == SelectBox || t == Radio || t == Switch ||
 		t == Checkbox || t == CheckboxStacked || t == CheckboxSingle
 }
@@ -303,11 +310,18 @@ func (t Type) IsTable() bool {
 	return t == Table
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsSingleSelect() bool {
+	// SelectSingle = 2
+	// Radio = 12
+	// Switch = 2
 	return t == SelectSingle || t == Radio || t == Switch || t == CheckboxSingle
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsMultiSelect() bool {
+	// Select = 3
+	// SelectBox = 5
 	return t == Select || t == SelectBox || t == Checkbox || t == CheckboxStacked
 }
 
@@ -315,11 +329,17 @@ func (t Type) IsMultiFile() bool {
 	return t == Multifile
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsRange() bool {
+	// DatetimeRange = 11
+	// NumberRange = 19
 	return t == DatetimeRange || t == NumberRange
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsFile() bool {
+	// File = 6
+	// Multifile = 7
 	return t == File || t == Multifile
 }
 
@@ -343,10 +363,13 @@ func (t Type) IsDateRange() bool {
 	return t == DateRange
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsCode() bool {
+	// Code = 23
 	return t == Code
 }
 
+// 判斷t(unit8)是否符合條件
 func (t Type) IsCustom() bool {
 	return t == Custom
 }
@@ -368,6 +391,7 @@ func (t Type) FixOptions(m map[string]interface{}) map[string]interface{} {
 	return m
 }
 
+// 判斷條件後回傳[]template.HTML
 func (t Type) SelectedLabel() []template.HTML {
 	if t == Select || t == SelectSingle || t == SelectBox {
 		return []template.HTML{"selected", ""}

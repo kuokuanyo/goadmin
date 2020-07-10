@@ -19,6 +19,7 @@ type Guard struct {
 	navBtns   *types.Buttons
 }
 
+// 將參數s、c、t設置至Guard(struct)後回傳
 func New(s service.List, c db.Connection, t table.GeneratorList, b *types.Buttons) *Guard {
 	return &Guard{
 		services:  s,
@@ -33,8 +34,12 @@ func (g *Guard) table(ctx *context.Context) (table.Table, string) {
 	return g.tableList[prefix](ctx), prefix
 }
 
+
+// 查詢url裡的參數(__prefix)，如果Guard.tableList存在該prefix(key)則執行迴圈
 func (g *Guard) CheckPrefix(ctx *context.Context) {
 
+	// PrefixKey = __prefix
+	// 取得Request url裡的參數(__prefix)
 	prefix := ctx.Query(constant.PrefixKey)
 
 	if _, ok := g.tableList[prefix]; !ok {
@@ -48,6 +53,7 @@ func (g *Guard) CheckPrefix(ctx *context.Context) {
 		return
 	}
 
+	// 執行迴圈Context.handlers[ctx.index](ctx)
 	ctx.Next()
 }
 

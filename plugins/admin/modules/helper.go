@@ -15,6 +15,7 @@ func InArray(arr []string, str string) bool {
 	return false
 }
 
+// 判斷參數del後回傳del+s(參數)+del或[s(參數)]
 func Delimiter(del, s string) string {
 	if del == "[" {
 		return "[" + s + "]"

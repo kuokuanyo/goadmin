@@ -18,15 +18,17 @@ import (
 )
 
 // SQL wraps the Connection and driver dialect methods.
+// 包裝Connection、driver與dialect方法
 type SQL struct {
-	dialect.SQLComponent
+	dialect.SQLComponent //sql過濾條件
 	diver   Connection
-	dialect dialect.Dialect
+	dialect dialect.Dialect //sql CRUD等方法(不同資料庫引擎的方法)
 	conn    string
 	tx      *dbsql.Tx
 }
 
 // SQLPool is a object pool of SQL.
+// 回傳sql元件
 var SQLPool = sync.Pool{
 	New: func() interface{} {
 		return &SQL{
@@ -52,6 +54,7 @@ var SQLPool = sync.Pool{
 type H map[string]interface{}
 
 // newSQL get a new SQL from SQLPool.
+// 取得新的SQL(struct)
 func newSQL() *SQL {
 	return SQLPool.Get().(*SQL)
 }
@@ -61,23 +64,27 @@ func newSQL() *SQL {
 // *******************************
 
 // TableName return a SQL with given table and default connection.
+// 將參數(table)設置並回傳sql(struct)
 func Table(table string) *SQL {
 	sql := newSQL()
-	sql.TableName = table
+	sql.TableName = table //sql.dialect.SQLComponent.TableName
 	sql.conn = "default"
 	return sql
 }
 
 // WithDriver return a SQL with given driver.
+// 將參數設置(conn)並回傳sql(struct)
 func WithDriver(conn Connection) *SQL {
 	sql := newSQL()
 	sql.diver = conn
+	//GetDialectByDriver 不同資料庫引擎有不同的使用符號
 	sql.dialect = dialect.GetDialectByDriver(conn.Name())
 	sql.conn = "default"
 	return sql
 }
 
 // WithDriverAndConnection return a SQL with given driver and connection name.
+// 將參數設置(connName、conn)並回傳sql(struct)
 func WithDriverAndConnection(connName string, conn Connection) *SQL {
 	sql := newSQL()
 	sql.diver = conn
@@ -87,8 +94,10 @@ func WithDriverAndConnection(connName string, conn Connection) *SQL {
 }
 
 // WithDriver return a SQL with given driver.
+// 返回sql struct藉由給定的conn
 func (sql *SQL) WithDriver(conn Connection) *SQL {
 	sql.diver = conn
+	//GetDialectByDriver 不同資料庫引擎有不同的使用符號
 	sql.dialect = dialect.GetDialectByDriver(conn.Name())
 	return sql
 }
@@ -106,13 +115,16 @@ func (sql *SQL) WithTx(tx *dbsql.Tx) *SQL {
 }
 
 // TableName set table of SQL.
+// 將SQL(struct)資訊清除後將參數設置至SQL.TableName回傳
 func (sql *SQL) Table(table string) *SQL {
+	// 將SQL(struct)資訊清除
 	sql.clean()
 	sql.TableName = table
 	return sql
 }
 
 // Select set select fields.
+// 將參數設置至SQL(struct).Fields並且設置SQL(struct).Functions
 func (sql *SQL) Select(fields ...string) *SQL {
 	sql.Fields = fields
 	sql.Functions = make([]string, len(fields))
@@ -185,17 +197,20 @@ func (sql *SQL) Take(take int) *SQL {
 }
 
 // Where add the where operation and argument value.
+// sql 語法 where = ...，回傳 SQl struct
 func (sql *SQL) Where(field string, operation string, arg interface{}) *SQL {
+	// sql.dialect.SQLComponent.Where
 	sql.Wheres = append(sql.Wheres, dialect.Where{
 		Field:     field,
 		Operation: operation,
 		Qmark:     "?",
 	})
-	sql.Args = append(sql.Args, arg)
+	sql.Args = append(sql.Args, arg) //sql.dialect.SQLComponent.Args
 	return sql
 }
 
 // WhereIn add the where operation of "in" and argument values.
+// where多個數值，ex where id IN (1,2,3,4);
 func (sql *SQL) WhereIn(field string, arg []interface{}) *SQL {
 	if len(arg) == 0 {
 		panic("wrong parameter")
@@ -224,6 +239,7 @@ func (sql *SQL) WhereNotIn(field string, arg []interface{}) *SQL {
 }
 
 // Find query the sql result with given id assuming that primary key name is "id".
+// 該資料表主鍵為id，藉由id取的符合資料
 func (sql *SQL) Find(arg interface{}) (map[string]interface{}, error) {
 	return sql.Where("id", "=", arg).First()
 }
@@ -328,6 +344,7 @@ func (sql *SQL) Avg(field string) (interface{}, error) {
 }
 
 // WhereRaw set WhereRaws and arguments.
+// 將參數raw、args設置至SQL(struct)
 func (sql *SQL) WhereRaw(raw string, args ...interface{}) *SQL {
 	sql.WhereRaws = raw
 	sql.Args = append(sql.Args, args...)
@@ -417,9 +434,12 @@ func (sql *SQL) WithTransactionByLevel(level dbsql.IsolationLevel, fn TxFn) (res
 // *******************************
 
 // First query the result and return the first row.
+// 回傳第一筆符合的資料
 func (sql *SQL) First() (map[string]interface{}, error) {
+	// 執行結束後清空sql資訊
 	defer RecycleSQL(sql)
 
+	//尋找資料
 	sql.dialect.Select(&sql.SQLComponent)
 
 	var (
@@ -427,6 +447,7 @@ func (sql *SQL) First() (map[string]interface{}, error) {
 		err error
 	)
 
+	//假設有tx在tx中執行查詢，反之一般資料庫執行
 	if sql.tx != nil {
 		res, err = sql.diver.QueryWithTx(sql.tx, sql.Statement, sql.Args...)
 	} else {
@@ -444,7 +465,9 @@ func (sql *SQL) First() (map[string]interface{}, error) {
 }
 
 // All query all the result and return.
+// 返回所有符合查詢的結果
 func (sql *SQL) All() ([]map[string]interface{}, error) {
+	//最後清空sql資訊
 	defer RecycleSQL(sql)
 
 	sql.dialect.Select(&sql.SQLComponent)
@@ -456,9 +479,13 @@ func (sql *SQL) All() ([]map[string]interface{}, error) {
 }
 
 // ShowColumns show columns info.
+// 取得所有欄位資訊
 func (sql *SQL) ShowColumns() ([]map[string]interface{}, error) {
+	//最後清空sql資訊
 	defer RecycleSQL(sql)
 
+	// QueryWithConnection有給定連接(conn)名稱，透過參數con查詢db.DbList[sql.conn]資料並回傳
+	// ShowColumns透過參數回傳 "show columns in " + sql.TableNam
 	return sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowColumns(sql.TableName))
 }
 
@@ -647,6 +674,7 @@ func (sql *SQL) wrap(field string) string {
 	return sql.diver.GetDelimiter() + field + sql.diver.GetDelimiter()
 }
 
+// 將SQL(struct)資訊清除
 func (sql *SQL) clean() {
 	sql.Functions = make([]string, 0)
 	sql.Group = ""
@@ -667,8 +695,12 @@ func (sql *SQL) clean() {
 // RecycleSQL clear the SQL and put into the pool.
 func RecycleSQL(sql *SQL) {
 
+	//sql.dialect.SQLComponent.Statement
+	//sql.dialect.SQLComponent.Args
+	// 印出sql 資訊
 	logger.LogSQL(sql.Statement, sql.Args)
 
+	// sql資訊清除
 	sql.clean()
 
 	sql.conn = ""
@@ -676,5 +708,6 @@ func RecycleSQL(sql *SQL) {
 	sql.tx = nil
 	sql.dialect = nil
 
+	//清空的sql 資訊放入SQLPool中
 	SQLPool.Put(sql)
 }

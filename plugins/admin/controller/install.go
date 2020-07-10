@@ -9,6 +9,7 @@ import (
 )
 
 // ShowInstall show install page.
+// 建立buffer(bytes.Buffer)並輸出HTML
 func (h *Handler) ShowInstall(ctx *context.Context) {
 
 	buffer := new(bytes.Buffer)
@@ -24,6 +25,7 @@ func (h *Handler) ShowInstall(ctx *context.Context) {
 }
 
 // CheckDatabase check the database connection.
+// 檢查資料庫連線參數是否正確
 func (h *Handler) CheckDatabase(ctx *context.Context) {
 
 	ip := ctx.FormValue("h")

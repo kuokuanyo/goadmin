@@ -12,26 +12,31 @@ import (
 )
 
 // CommonQuery is a common method of query.
+// 查詢資料並回傳
 func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
 
+	//查詢
 	rs, err := db.Query(query, args...)
 
 	if err != nil {
 		panic(err)
 	}
 
+	//最後關閉 *sql.rows
 	defer func() {
 		if rs != nil {
 			_ = rs.Close()
 		}
 	}()
 
+	//取得欄位名稱
 	col, colErr := rs.Columns()
 
 	if colErr != nil {
 		return nil, colErr
 	}
 
+	// 取得欄位類別
 	typeVal, err := rs.ColumnTypes()
 	if err != nil {
 		return nil, err
@@ -44,8 +49,11 @@ func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]in
 	r, _ := regexp.Compile(`\\((.*)\\)`)
 	for rs.Next() {
 		var colVar = make([]interface{}, len(col))
+		//typeName欄位類別名稱
 		for i := 0; i < len(col); i++ {
 			typeName := strings.ToUpper(r.ReplaceAllString(typeVal[i].DatabaseTypeName(), ""))
+			//converter.go中
+			//SetColVarType 設定欄位數值類型
 			SetColVarType(&colVar, i, typeName)
 		}
 		result := make(map[string]interface{})
@@ -54,6 +62,7 @@ func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]in
 		}
 		for j := 0; j < len(col); j++ {
 			typeName := strings.ToUpper(r.ReplaceAllString(typeVal[j].DatabaseTypeName(), ""))
+			// converter.go中
 			SetResultValue(&result, col[j], colVar[j], typeName)
 		}
 		results = append(results, result)
@@ -65,6 +74,7 @@ func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]in
 }
 
 // CommonExec is a common method of exec.
+// 執行sql命令
 func CommonExec(db *sql.DB, query string, args ...interface{}) (sql.Result, error) {
 
 	rs, err := db.Exec(query, args...)
@@ -75,6 +85,7 @@ func CommonExec(db *sql.DB, query string, args ...interface{}) (sql.Result, erro
 }
 
 // CommonQueryWithTx is a common method of query.
+// 與CommonQuery一樣(差別在tx執行)
 func CommonQueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]map[string]interface{}, error) {
 
 	rs, err := tx.Query(query, args...)
@@ -128,6 +139,7 @@ func CommonQueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]map[str
 }
 
 // CommonExecWithTx is a common method of exec.
+// 與CommonExec一樣(差別在tx執行)
 func CommonExecWithTx(tx *sql.Tx, query string, args ...interface{}) (sql.Result, error) {
 	rs, err := tx.Exec(query, args...)
 	if err != nil {

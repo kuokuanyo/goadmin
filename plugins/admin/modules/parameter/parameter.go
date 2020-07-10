@@ -62,6 +62,7 @@ var operators = map[string]string{
 
 var keys = []string{Page, PageSize, Sort, Columns, Prefix, Pjax, form.NoAnimationKey}
 
+// 設置值(頁數及頁數Size)至Parameters(struct)並回傳
 func BaseParam() Parameters {
 	return Parameters{Page: "1", PageSize: "10", Fields: make(map[string][]string)}
 }
@@ -140,12 +141,17 @@ func GetParamFromURL(urlStr string, defaultPageSize int, defaultSortType, primar
 	return GetParam(u, defaultPageSize, primaryKey, defaultSortType)
 }
 
+// 將參數(多個string)結合並設置至Parameters.Fields["__pk"]後回傳
 func (param Parameters) WithPKs(id ...string) Parameters {
+	// PrimaryKey = __pk
 	param.Fields[PrimaryKey] = []string{strings.Join(id, ",")}
 	return param
 }
 
+// 透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string
 func (param Parameters) PKs() []string {
+	// 透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)
+	// PrimaryKey = PrimaryKey
 	pk := param.GetFieldValue(PrimaryKey)
 	if pk == "" {
 		return []string{}
@@ -158,7 +164,9 @@ func (param Parameters) DeletePK() Parameters {
 	return param
 }
 
+// PK透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string，回傳第一個數值
 func (param Parameters) PK() string {
+	// PKs透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string
 	return param.PKs()[0]
 }
 
@@ -193,6 +201,7 @@ func (param Parameters) GetFilterFieldValueEnd(field string) string {
 	return param.GetFieldValue(field + FilterRangeParamEndSuffix)
 }
 
+// 透過參數field尋找Parameters.Fields[field]是否存在，如果存在則回傳第一個value值(string)
 func (param Parameters) GetFieldValue(field string) string {
 	value, ok := param.Fields[field]
 	if ok && len(value) > 0 {

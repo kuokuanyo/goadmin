@@ -9,8 +9,13 @@ import (
 )
 
 // SetColVarType set the column type.
+// 設置欄位類型
 func SetColVarType(colVar *[]interface{}, i int, typeName string) {
+	//判別欄位數值類別
 	switch {
+	//Contains 在types.go中
+	//contains中的第二個參數(欄位的類型)�m在 types.go中
+	// 將字串(typeName)轉換成 type DatabaseType
 	case Contains(DT(typeName), BoolTypeList):
 		var s sql.NullBool
 		(*colVar)[i] = &s
@@ -33,6 +38,7 @@ func SetColVarType(colVar *[]interface{}, i int, typeName string) {
 }
 
 // SetResultValue set the result value.
+// 設置數值
 func SetResultValue(result *map[string]interface{}, index string, colVar interface{}, typeName string) {
 	switch {
 	case Contains(DT(typeName), BoolTypeList):

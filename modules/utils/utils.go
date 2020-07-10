@@ -92,6 +92,7 @@ func WrapURL(u string) string {
 		strings.Replace(v.Encode(), "%7B%7B.Id%7D%7D", "{{.Id}}", -1)
 }
 
+// 將參數a執行JSON編碼並回傳
 func JSON(a interface{}) string {
 	if a == nil {
 		return ""
@@ -110,6 +111,7 @@ func ParseFloat32(f string) float32 {
 	return float32(s)
 }
 
+// 假設第一個參數 = 第二個參數回傳第三個參數，沒有的話回傳第一個參數
 func SetDefault(value, condition, def string) string {
 	if value == condition {
 		return def
