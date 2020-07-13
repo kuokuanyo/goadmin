@@ -247,8 +247,8 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 	}
 
 	if f.isBelongToATable() {
-	// IsSelect在template\types\form\form.go
-	// 判斷f.FormTypet(unit8)是否符合條件
+		// IsSelect在template\types\form\form.go
+		// 判斷f.FormTypet(unit8)是否符合條件
 		if f.FormType.IsSelect() {
 			// type OptionInitFn func(val FieldModel) FieldOptions
 			// SetSelectedLabel(設置所選標籤)對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
@@ -286,9 +286,9 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 		// 判斷f.FormTypet(unit8)是否符合條件
 		if f.FormType.IsSelect() {
 			if len(f.Options) == 0 && f.OptionInitFn != nil {
-			// type OptionInitFn func(val FieldModel) FieldOptions
-			// SetSelectedLabel(設置所選標籤)對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
-			// SelectedLabel判斷條件後回傳[]template.HTML
+				// type OptionInitFn func(val FieldModel) FieldOptions
+				// SetSelectedLabel(設置所選標籤)對FieldOptions([]FieldOption)執行迴圈，判斷條件後將參數(html)設置至FieldOptions[k].SelectedLabel後回傳
+				// SelectedLabel判斷條件後回傳[]template.HTML
 				f.Options = f.OptionInitFn(m).SetSelectedLabel(f.FormType.SelectedLabel())
 			} else {
 				f.setOptionsFromSQL(sql)

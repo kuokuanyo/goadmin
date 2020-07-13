@@ -2,6 +2,10 @@ package controller
 
 import (
 	"bytes"
+	template2 "html/template"
+	"net/http"
+	"net/url"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -13,32 +17,29 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	template2 "html/template"
-	"net/http"
-	"net/url"
 )
 
 // Auth check the input password and username for authentication.
-// ????username?password????user?role?permission?????menu
-// ???????(goadmin_users)????(??)
+// 身分驗證username、password，接著取得user、role、permission及可用menu
+// 最後更新資料表(goadmin_users)的密碼值(加密)
 func (h *Handler) Auth(ctx *context.Context) {
 
 	var (
-		user     models.UserModel
-		ok       bool
-		errMsg   = "fail"
+		user   models.UserModel
+		ok     bool
+		errMsg = "fail"
 		// ServiceKey = auth
-		// ???????????(auth.ServiceKey)?Service
+		// 判斷是否有取得符合參數(auth.ServiceKey)的Service
 		s, exist = h.services.GetOrNot(auth.ServiceKey)
 	)
 
-	// ??Handler.captchaConfig(map[string]string)["driver"]??
+	// 取得Handler.captchaConfig(map[string]string)["driver"]的值
 	if capDriver, ok := h.captchaConfig["driver"]; ok {
-		// Get?plugins\admin\modules\captcha\captcha.go
-		// ??List(make(map[string]Captcha))??????key?????Captcha(interface)
+		// Get在plugins\admin\modules\captcha\captcha.go
+		// 判斷List(make(map[string]Captcha))裡是否有參數key的值並回傳Captcha(interface)
 		capt, ok := captcha.Get(capDriver)
 
-		// ??token
+		// 驗證token
 		if ok {
 			if !capt.Validate(ctx.FormValue("token")) {
 				response.BadRequest(ctx, "wrong captcha")
@@ -47,7 +48,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		}
 	}
 
-	// ????key??url????
+	// 藉由參數key取得url的參數值
 	if !exist {
 		password := ctx.FormValue("password")
 		username := ctx.FormValue("username")
@@ -57,7 +58,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 			return
 		}
 		// modules\auth\auth.go
-		// ??user??????????user?role?permission???menu????????(goadmin_users)????(??)
+		// 檢查user密碼是否正確之後取得user的role、permission及可用menu，最後更新資料表(goadmin_users)的密碼值(加密)
 		user, ok = auth.Check(password, username, h.conn)
 	} else {
 		user, ok, errMsg = auth.GetService(s).P(ctx)
@@ -68,7 +69,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		return
 	}
 
-	// ??cookie(struct)????response header Set-Cookie?
+	// 設置cookie(struct)並儲存在response header Set-Cookie中
 	err := auth.SetCookie(ctx, user, h.conn)
 
 	if err != nil {
@@ -76,7 +77,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		return
 	}
 
-	// ????Referer??Header
+	// 藉由參數Referer獲得Header
 	if ref := ctx.Headers("Referer"); ref != "" {
 		if u, err := url.Parse(ref); err == nil {
 			v := u.Query()
@@ -90,7 +91,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		}
 	}
 
-	// ?????code:200 and msg:ok and data
+	// 成功，回傳code:200 and msg:ok and data
 	response.OkWithData(ctx, map[string]interface{}{
 		"url": h.config.GetIndexURL(),
 	})
@@ -100,30 +101,30 @@ func (h *Handler) Auth(ctx *context.Context) {
 
 // Logout delete the cookie.
 func (h *Handler) Logout(ctx *context.Context) {
-	// DelCookie??cookie(session)??
-	// GetConnection?????service.List?????Connection(interface)??
+	// DelCookie清除cookie(session)資料
+	// GetConnection取得匹配的service.List然後轉換成Connection(interface)類別
 	err := auth.DelCookie(ctx, db.GetConnection(h.services))
 	if err != nil {
 		logger.Error("logout error", err)
 	}
 
-	// AddHeader???(key?value)??header?(Context.Response.Header)
+	// AddHeader將參數(key、value)添加header中(Context.Response.Header)
 	// GetLoginUrl globalCfg.LoginUrl
 	ctx.AddHeader("Location", h.config.Url(config.GetLoginUrl()))
 	ctx.SetStatusCode(302)
 }
 
 // ShowLogin show the login page.
-// ShowLogin??map[string]Component(interface)?????login(key)???????template?data??buf???HTML
+// ShowLogin判斷map[string]Component(interface)是否有參數login(key)的值，接著執行template將data寫入buf並輸出HTML
 func (h *Handler) ShowLogin(ctx *context.Context) {
 
-	// GetComp??map[string]Component?????name(login)?????????Component(interface)
-	// GetTemplate?Component(interface)???
+	// GetComp判斷map[string]Component是否有參數name(login)的值，有的話則回傳Component(interface)
+	// GetTemplate為Component(interface)的方法
 	tmpl, name := template.GetComp("login").GetTemplate()
 	buf := new(bytes.Buffer)
 
-	// ExecuteTemplate?html/template??
-	// ??????data??buf(struct)???HTML
+	// ExecuteTemplate為html/template套件
+	// 將第三個參數data寫入buf(struct)後輸出HTML
 	if err := tmpl.ExecuteTemplate(buf, name, struct {
 		UrlPrefix string
 		Title     string

@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// 判斷第二個參數(string)是否存在[]string(第一個參數中)
 func InArray(arr []string, str string) bool {
 	for _, v := range arr {
 		if v == str {

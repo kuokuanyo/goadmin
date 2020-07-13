@@ -1,11 +1,13 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/template/types"
+	"fmt"
 	tmpl "html/template"
 	"mime/multipart"
 	"regexp"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/template/types"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
@@ -97,53 +99,85 @@ func (e EditFormParam) Value() form.Values {
 	return e.MultiForm.Value
 }
 
+// EditForm(編輯表單)編輯用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
+// 接著取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)，最後設定Context.UserValue並執行編輯表單的動作
 func (g *Guard) EditForm(ctx *context.Context) {
+
+	// form.PreviousKey  = __go_admin_previous_
+	// 藉由參數取得multipart/form-data中的__go_admin_previous_值
+	// ex:/admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
 	previous := ctx.FormValue(form.PreviousKey)
+
+
+	// 取得url中__prefix的值
 	panel, prefix := g.table(ctx)
 
+	// GetEditable回傳BaseTable.Editable(是否可以編輯)
 	if !panel.GetEditable() {
 		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
+
+	// form.TokenKey  = __go_admin_t_
+	// 藉由參數取得multipart/form-data中的__go_admin_t_值
 	token := ctx.FormValue(form.TokenKey)
 
+	// GetTokenService將參數g.services.Get(auth.TokenServiceKey)轉換成TokenService(struct)類別後回傳
+	// GetTokenService透過參數(token_csrf_helper)取得匹配的Service(interface)
+	// CheckToken檢查TokenService.tokens([]string)裡是否有符合參數toCheckToken的值
+	// 如果符合，將在TokenService.tokens([]string)裡將符合的toCheckToken從[]string拿出
+	// 檢查token是否正確
 	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
 		alert(ctx, panel, errors.EditFailWrongToken, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
 
+	// 判斷參數是否是info url(true)
 	fromList := isInfoUrl(previous)
 
+	// GetInfo將參數值設置至base.Info(InfoPanel(struct)).primaryKey中後回傳
+	// GetParamFromURL在plugins\admin\modules\parameter\parameter.go
+	// GetParamFromURL(從URL中取得參數)取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)並回傳
 	param := parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
+		// GetPrimaryKey回傳BaseTable.PrimaryKey
 		panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
 
 	if fromList {
+		// GetRouteParamStr取得url.Values後加入__page(鍵)與值，最後編碼並回傳
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
 	}
 
 	multiForm := ctx.Request.MultipartForm
 
+	// 取得id
+	// GetPrimaryKey在plugins\admin\modules\table\table.go
+	// GetPrimaryKey回傳BaseTable.PrimaryKey
 	id := multiForm.Value[panel.GetPrimaryKey().Name][0]
 
+	// 取得在multipart/form-data所設定的參數
 	values := ctx.Request.MultipartForm.Value
 
+	// SetUserValue藉由參數key、value設定Context.UserValue
 	ctx.SetUserValue(editFormParamKey, &EditFormParam{
-		Panel:        panel,
-		Id:           id,
-		Prefix:       prefix,
-		Param:        param.WithPKs(id),
-		Path:         strings.Split(previous, "?")[0],
-		MultiForm:    multiForm,
-		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
+		Panel:     panel,
+		Id:        id,
+		Prefix:    prefix,                          // manage or roles or permissions
+		Param:     param.WithPKs(id),               // 將參數(多個string)結合並設置至Parameters.Fields["__pk"]後回傳
+		Path:      strings.Split(previous, "?")[0], // ex:/admin/info/manager(roles or permissions)
+		MultiForm: multiForm,
+		// constant.IframeKey = __goadmin_iframe
+		IsIframe: form.Values(values).Get(constant.IframeKey) == "true", // ex:false
+		// constant.IframeIDKey = __goadmin_iframe_id
 		IframeID:     form.Values(values).Get(constant.IframeIDKey),
-		PreviousPath: previous,
-		FromList:     fromList,
+		PreviousPath: previous, // ex: /admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
+		FromList:     fromList, // ex: true
 	})
 	ctx.Next()
 }
 
+// 判斷參數是否是info url
 func isInfoUrl(s string) bool {
 	reg, _ := regexp.Compile("(.*?)info/(.*?)$")
 	sub := reg.FindStringSubmatch(s)

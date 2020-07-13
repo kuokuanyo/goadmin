@@ -1,12 +1,13 @@
 package parameter
 
 import (
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 )
 
 type Parameters struct {
@@ -67,7 +68,11 @@ func BaseParam() Parameters {
 	return Parameters{Page: "1", PageSize: "10", Fields: make(map[string][]string)}
 }
 
+// 取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)並回傳
 func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
+
+	// Query從url取得設定參數
+	// ex: map[__columns:[id,username,name,goadmin_roles_goadmin_join_name,created_at,updated_at] __go_admin_no_animation_:[true] __page:[1] __pageSize:[10] __prefix:[manager] __sort:[id] __sort_type:[desc] _pjax:[#pjax-container]]
 	values := u.Query()
 
 	primaryKey := "id"
@@ -78,26 +83,36 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 		defaultSortType = p[1]
 	}
 
-	page := getDefault(values, Page, "1")
-	pageSize := getDefault(values, PageSize, strconv.Itoa(defaultPageSize))
-	sortField := getDefault(values, Sort, primaryKey)
-	sortType := getDefault(values, SortType, defaultSortType)
-	columns := getDefault(values, Columns, "")
+	// getDefault透過參數key取得url中的值(value)，判斷是否為空，如果是空值回傳第三個參數def，如果不為空則回傳value
+	page := getDefault(values, Page, "1") // __page
+	pageSize := getDefault(values, PageSize, strconv.Itoa(defaultPageSize)) // __pageSize
+	sortField := getDefault(values, Sort, primaryKey) // __sort
+	sortType := getDefault(values, SortType, defaultSortType) // __sort_type
+	// 選擇顯示的欄位
+	columns := getDefault(values, Columns, "") // ex: id,username,name,goadmin_roles_goadmin_join_name,created_at,updated_at
 
 	animation := true
+
+	// form.NoAnimationKey = __go_admin_no_animation_
+	// 判斷url中是否有動畫參數
 	if values.Get(form.NoAnimationKey) == "true" {
 		animation = false
 	}
 
+	// fields在下面迴圈處理後，ex:map[__goadmin_edit_pk:[4]] or []...等
 	fields := make(map[string][]string)
-
 	for key, value := range values {
+		// keys []string{Page, PageSize, Sort, Columns, Prefix, Pjax, form.NoAnimationKey}
 		if !modules.InArray(keys, key) && len(value) > 0 && value[0] != "" {
+			// SortType = __sort_type
 			if key == SortType {
+				// sortTypeDesc = desc
+				// sortTypeAsc = asc
 				if value[0] != sortTypeDesc && value[0] != sortTypeAsc {
 					fields[key] = []string{sortTypeDesc}
 				}
 			} else {
+				// FilterParamOperatorSuffix = __goadmin_operator__
 				if strings.Contains(key, FilterParamOperatorSuffix) &&
 					values.Get(strings.Replace(key, FilterParamOperatorSuffix, "", -1)) == "" {
 					continue
@@ -108,6 +123,8 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 	}
 
 	columnsArr := make([]string, 0)
+
+	// 如果有設定顯示欄位(則回傳欄位名稱至columnsArr，如果沒有設定則回傳空[])
 	if columns != "" {
 		columns, _ = url.QueryUnescape(columns)
 		columnsArr = strings.Split(columns, ",")
@@ -130,14 +147,20 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 	}
 }
 
+// GetParamFromURL(從URL中取得參數)取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)並回傳
+// defaultPageSize = 10,defaultSortType = desc or asc，primaryKey = id
 func GetParamFromURL(urlStr string, defaultPageSize int, defaultSortType, primaryKey string) Parameters {
 
+	// 解析url
+	// ex: /admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
+	// 如果有選擇顯示欄位則還會得到ex:__columns=id,Cusername....
 	u, err := url.Parse(urlStr)
 
 	if err != nil {
 		return BaseParam()
 	}
 
+	// 取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)並回傳
 	return GetParam(u, defaultPageSize, primaryKey, defaultSortType)
 }
 
@@ -257,9 +280,12 @@ func (param Parameters) SetPage(page string) Parameters {
 	return param
 }
 
+// 取得url.Values後加入__page(鍵)與值，最後編碼並回傳
 func (param Parameters) GetRouteParamStr() string {
+	// GetFixedParamStr將Parameters(struct)的鍵與值加入至url.Values並回傳
 	p := param.GetFixedParamStr()
 	p.Add(Page, param.Page)
+
 	return "?" + p.Encode()
 }
 
@@ -297,6 +323,7 @@ func (param Parameters) GetNextPageRouteParamStr() string {
 	return "?" + p.Encode()
 }
 
+// 將Parameters(struct)的鍵與值加入至url.Values並回傳
 func (param Parameters) GetFixedParamStr() url.Values {
 	p := url.Values{}
 	p.Add(Sort, param.SortField)
@@ -308,6 +335,7 @@ func (param Parameters) GetFixedParamStr() url.Values {
 	for key, value := range param.Fields {
 		p[key] = value
 	}
+
 	return p
 }
 
@@ -418,6 +446,7 @@ func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []i
 	return wheres, whereArgs, existKeys
 }
 
+// 透過參數key取得url中的值(value)，判斷是否為空，如果是空值回傳第三個參數def，如果不為空則回傳value
 func getDefault(values url.Values, key, def string) string {
 	value := values.Get(key)
 	if value == "" {

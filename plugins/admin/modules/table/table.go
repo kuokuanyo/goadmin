@@ -1,6 +1,10 @@
 package table
 
 import (
+	"html/template"
+	"sync"
+	"sync/atomic"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/service"
@@ -8,9 +12,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/paginator"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	"html/template"
-	"sync"
-	"sync/atomic"
 )
 
 type Generator func(ctx *context.Context) Table
@@ -118,14 +119,21 @@ func (base *BaseTable) GetCanAdd() bool {
 	return base.CanAdd
 }
 
-func (base *BaseTable) GetPrimaryKey() PrimaryKey { return base.PrimaryKey }
-func (base *BaseTable) GetEditable() bool         { return base.Editable }
-func (base *BaseTable) GetDeletable() bool        { return base.Deletable }
-func (base *BaseTable) GetExportable() bool       { return base.Exportable }
-func (base *BaseTable) GetOnlyInfo() bool         { return base.OnlyInfo }
-func (base *BaseTable) GetOnlyDetail() bool       { return base.OnlyDetail }
-func (base *BaseTable) GetOnlyNewForm() bool      { return base.OnlyNewForm }
-func (base *BaseTable) GetOnlyUpdateForm() bool   { return base.OnlyUpdateForm }
+func (base *BaseTable) GetPrimaryKey() PrimaryKey { return base.PrimaryKey } // 回傳BaseTable.PrimaryKey
+
+func (base *BaseTable) GetEditable() bool { return base.Editable } // 回傳BaseTable.Editable(是否可以編輯)
+
+func (base *BaseTable) GetDeletable() bool { return base.Deletable } // 回傳BaseTable.Deletable(是否可以刪除)
+
+func (base *BaseTable) GetExportable() bool { return base.Exportable } // 回傳BaseTable.Exportable(是否可以輸出)
+
+func (base *BaseTable) GetOnlyInfo() bool { return base.OnlyInfo } // 回傳BaseTable.OnlyInfo(是否唯一資訊)
+
+func (base *BaseTable) GetOnlyDetail() bool { return base.OnlyDetail } // 回傳BaseTable.OnlyDetail(是否取得detail)
+
+func (base *BaseTable) GetOnlyNewForm() bool { return base.OnlyNewForm } // 回傳BaseTable.OnlyNewForm()
+
+func (base *BaseTable) GetOnlyUpdateForm() bool { return base.OnlyUpdateForm } // 回傳BaseTable.OnlyUpdateForm
 
 func (base *BaseTable) GetPaginator(size int, params parameter.Parameters, extraHtml ...template.HTML) types.PaginatorAttribute {
 

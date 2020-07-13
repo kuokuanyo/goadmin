@@ -570,7 +570,8 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		res     map[string]interface{}
 		columns Columns
 		// PK透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string，回傳第一個數值
-		id      = param.PK()
+		// 取得id
+		id = param.PK()
 	)
 
 	// getDataRes假設參數list([]map[string]interface{})長度大於零則回傳list[0](map[string]interface{})
@@ -592,20 +593,20 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		var (
 			fields, joinFields, joins, groupBy = "", "", "", ""
 
-			err            error
-			joinTables     = make([]string, 0)
+			err        error
+			joinTables = make([]string, 0)
 			// args為編輯的id
-			args           = []interface{}{id}
-			connection     = tb.db()
+			args = []interface{}{id}
 			// db透過參數(k)取得匹配的Service(interface)，接著將參數services.Get(tb.connectionDriver)轉換為Connection(interface)回傳並回傳
-			delimiter      = connection.GetDelimiter()
+			connection = tb.db()
+			delimiter  = connection.GetDelimiter()
 			// GetForm將參數值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳
 			// tablename = goadmin_menu
-			tableName      = tb.GetForm().Table
+			tableName = tb.GetForm().Table
 			// Delimiter在plugins\admin\modules\table\default.go
 			// Delimiter判斷參數del後回傳del+s(參數)+del或[s(參數)]
 			// pk = goadmin_menu.'id'
-			pk             = tableName + "." + modules.Delimiter(delimiter, tb.PrimaryKey.Name)
+			pk = tableName + "." + modules.Delimiter(delimiter, tb.PrimaryKey.Name)
 			// queryStatement取得goadmin_menu某一筆資料(根據id)
 			queryStatement = "select %s from " + modules.Delimiter(delimiter, "%s") + " %s where " + pk + " = ? %s "
 		)
@@ -618,10 +619,10 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		for _, field := range tb.Form.FieldList {
 
 			if field.Field != pk && modules.InArray(columns, field.Field) &&
-			// Valid在template\types\info.go
-			// 對joins([]join(struct))執行迴圈，假設Join的Table、Field、JoinField不為空，回傳true
+				// Valid在template\types\info.go
+				// 對joins([]join(struct))執行迴圈，假設Join(struct)的Table、Field、JoinField不為空，回傳true
 				!field.Joins.Valid() {
-				// 將所有欄位名稱�m加上資料表名(ex:tablename.colname)
+				// 將所有欄位名稱加上資料表名(ex:tablename.colname)
 				// ex:goadmin_menu.`id`,goadmin_menu.`parent_id`,goadmin_menu.`title`,...
 				fields += tableName + "." + modules.FilterField(field.Field, delimiter) + ","
 			}
@@ -684,7 +685,6 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		// QueryWithConnection(connection方法)在admin\modules\db\mysql.go
 		// QueryWithConnection有給定連接(tb.connection)名稱，透過參數tb.connection查詢db.DbList[tb.connection]資料並回傳
 		result, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
-
 		if err != nil {
 			// tb.Form.Title主題左上角(ex:菜單管理)
 			// tb.Form.Description主題旁邊的描述(ex:菜單管理)
@@ -712,14 +712,15 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			GroupFieldList:    groupFormList,
 			GroupFieldHeaders: groupHeaders,
 			// tb.Form.Title左上角標題
-			Title:             tb.Form.Title,
+			Title: tb.Form.Title,
 			// tb.Form.Description標題旁的描述
-			Description:       tb.Form.Description,
+			Description: tb.Form.Description,
 		}, nil
 	}
 
 	// tb.PrimaryKey.Name = id
 	// columns = [id parent_id type order title icon uri header created_at updated_at]
+	// FieldsWithValue(對帶值的欄位更新)對FormPanel.FieldList(FormFields)執行迴圈，分別更新FormField(struct)並加入FormFields後回傳
 	var fieldList = tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sql)
 
 	return FormInfo{

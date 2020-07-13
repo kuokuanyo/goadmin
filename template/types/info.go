@@ -3,6 +3,12 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"html"
+	"html/template"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/language"
@@ -12,11 +18,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 	"github.com/GoAdminGroup/go-admin/template/types/table"
-	"html"
-	"html/template"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 // FieldModel is the single query result.

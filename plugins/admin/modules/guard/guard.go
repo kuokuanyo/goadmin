@@ -29,11 +29,13 @@ func New(s service.List, c db.Connection, t table.GeneratorList, b *types.Button
 	}
 }
 
+
 func (g *Guard) table(ctx *context.Context) (table.Table, string) {
+	// constant.PrefixKey = __prefix
+	// 取得url中__prefix的值
 	prefix := ctx.Query(constant.PrefixKey)
 	return g.tableList[prefix](ctx), prefix
 }
-
 
 // 查詢url裡的參數(__prefix)，如果Guard.tableList存在該prefix(key)則執行迴圈
 func (g *Guard) CheckPrefix(ctx *context.Context) {

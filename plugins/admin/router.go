@@ -34,7 +34,8 @@ func (admin *Admin) initRouter() *Admin {
 	// plugins\admin\controller\install.go
 	// 建立buffer(bytes.Buffer)並輸出HTML
 	route.GET("/install", admin.handler.ShowInstall)
-	// 檢查資料庫連線參數是否正確
+	// 檢查資料庫連線參數是否正確(mysql)
+	// 參數設置範例h=127.0.0.1,po=3306,u=root,pa=asdf4440,db=godmin(在multipart/form-data配置)
 	route.POST("/install/database/check", admin.handler.CheckDatabase)
 
 	// 處理前端的檔案
@@ -65,8 +66,6 @@ func (admin *Admin) initRouter() *Admin {
 	// 登出並清除cookie後回到登入頁面
 	authRoute.GET("/logout", admin.handler.Logout)
 
-
-
 	// menus
 	// 需要有參數id = ?
 	// MenuDelete查詢url中參數id的值後將id設置至MenuDeleteParam(struct)，接著將值設置至Context.UserValue[delete_menu_param]中，最後執行迴圈Context.handlers[ctx.index](ctx)
@@ -76,8 +75,8 @@ func (admin *Admin) initRouter() *Admin {
 
 	// MenuNew在plugins\admin\modules\guard\menu_new.go
 	// MenuNew藉由參數取得multipart/form-data中設置的值，接著驗證token並將multipart/form-data的key、value值設置至Context.UserValue[new_menu_param]，最後執行迴圈Context.handlers[ctx.index](ctx)
-    // NewMenu將Context.UserValue(map[string]interface{})[new_menu_param]的值轉換成MenuNewParam(struct)類別，接著將MenuNewParam(struct)值新增至資料表(MenuModel.Base.TableName(goadmin_menu))中
-    // 最後如果multipart/form-data有設定roles[]值，檢查條件後將參數roleId(role_id)與MenuModel.Id(menu_id)加入goadmin_role_menu資料表
+	// NewMenu將Context.UserValue(map[string]interface{})[new_menu_param]的值轉換成MenuNewParam(struct)類別，接著將MenuNewParam(struct)值新增至資料表(MenuModel.Base.TableName(goadmin_menu))中
+	// 最後如果multipart/form-data有設定roles[]值，檢查條件後將參數roleId(role_id)與MenuModel.Id(menu_id)加入goadmin_role_menu資料表
 	authRoute.POST("/menu/new", admin.guardian.MenuNew, admin.handler.NewMenu).Name("menu_new")
 
 	// MenuEdit在plugins\admin\modules\guard\menu_edit.go中
@@ -88,7 +87,7 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.POST("/menu/edit", admin.guardian.MenuEdit, admin.handler.EditMenu).Name("menu_edit")
 
 	// 取得multipart/form-data中的_order參數後更改menu順序
-	// 參數設置範例:_order: [{"id":7},{"id":1,"children":[{"id":2},{"id":3},{"id":4},{"id":5},{"id":6}]},{"id":15},{"id":17},{"id":16}])
+	// 參數設置範例(在multipart/form-data配置):_order: [{"id":7},{"id":1,"children":[{"id":2},{"id":3},{"id":4},{"id":5},{"id":6}]},{"id":15},{"id":17},{"id":16}])
 	authRoute.POST("/menu/order", admin.handler.MenuOrder).Name("menu_order")
 
 	//分別處理上下半部表單的HTML語法，最後結合並輸出HTML
@@ -109,7 +108,11 @@ func (admin *Admin) initRouter() *Admin {
 	authPrefixRoute.GET("/info/:__prefix/detail", admin.handler.ShowDetail).Name("detail")
 	authPrefixRoute.GET("/info/:__prefix/edit", admin.guardian.ShowForm, admin.handler.ShowForm).Name("show_edit")
 	authPrefixRoute.GET("/info/:__prefix/new", admin.guardian.ShowNewForm, admin.handler.ShowNewForm).Name("show_new")
+
+	// EditForm(編輯表單)編輯用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
+	// 接著取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)，最後設定Context.UserValue並執行編輯表單的動作
 	authPrefixRoute.POST("/edit/:__prefix", admin.guardian.EditForm, admin.handler.EditForm).Name("edit")
+
 	authPrefixRoute.POST("/new/:__prefix", admin.guardian.NewForm, admin.handler.NewForm).Name("new")
 	authPrefixRoute.POST("/delete/:__prefix", admin.guardian.Delete, admin.handler.Delete).Name("delete")
 	authPrefixRoute.POST("/export/:__prefix", admin.guardian.Export, admin.handler.Export).Name("export")

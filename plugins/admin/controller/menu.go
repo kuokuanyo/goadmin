@@ -33,6 +33,7 @@ func (h *Handler) ShowNewMenu(ctx *context.Context) {
 	h.showNewMenu(ctx, nil)
 }
 
+//
 func (h *Handler) showNewMenu(ctx *context.Context, err error) {
 	// 先透過參數"menu"取得Table(interface)，接著判斷條件後將[]context.Node加入至Handler.operations後回傳
 	panel := h.table("menu", ctx)
@@ -138,15 +139,21 @@ func (h *Handler) showEditMenu(ctx *context.Context, formInfo table.FormInfo, er
 	// aForm設置FormAttribute(是struct也是interface)
 	// 將參數值設置至FormFields(struct)
 	h.HTML(ctx, auth.Auth(ctx), types.Panel{
-		// Content將編輯頁面的HTML語法寫入
-		// formContent在plugins\admin\controller\common.go
-		// formContent回傳表單的HTML語法(class="box box-")
+		// aForm在plugins\admin\controller\common.go中
+		// aForm設置FormAttribute(是struct也是interface)
+		// 將參數值設置至FormFields(struct)
+		// 判斷條件後，將FormFields添加至FormAttribute.ContentList([]FormFields)
+		// 接著將符合FormAttribute.TemplateList["components/多個參數"](map[string]string)的值加入text(string)，接著將參數及功能添加給新的模板並解析為模板的主體
+		// 將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML回傳
+		// menuFormContent(菜單表單內容)首先將值設置至BoxAttribute(是struct也是interface)
+		// 接著將符合BoxAttribute.TemplateList["box"](map[string]string)的值加入text(string)，最後將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML
+		// menuFormContent為尋找{{define "box"}}，將FormInfo(struct)設置至內容及header
 		Content: alert + formContent(aForm().
 			SetContent(formInfo.FieldList).
-			SetTabContents(formInfo.GroupFieldList).
-			SetTabHeaders(formInfo.GroupFieldHeaders).
-			SetPrefix(h.config.PrefixFixSlash()).
-			SetPrimaryKey(h.table("menu", ctx).GetPrimaryKey().Name).
+			SetTabContents(formInfo.GroupFieldList).                  // 空
+			SetTabHeaders(formInfo.GroupFieldHeaders).                // 空
+			SetPrefix(h.config.PrefixFixSlash()).                     // /admin
+			SetPrimaryKey(h.table("menu", ctx).GetPrimaryKey().Name). // id
 			SetUrl(h.routePath("menu_edit")).
 			// formFooter處理後回傳繼續新增、繼續編輯、保存、重製....等HTML語法
 			SetOperationFooter(formFooter("edit", false, false, false)).
@@ -284,11 +291,11 @@ func (h *Handler) NewMenu(ctx *context.Context) {
 }
 
 // MenuOrder change the order of menu items.
-// MenuOrder change the order of menu items.
 // 取得multipart/form-data中的_order參數後更改menu順序
 func (h *Handler) MenuOrder(ctx *context.Context) {
 
 	var data []map[string]interface{}
+
 	// FormValue取得multipart/form-data中的_order參數後解碼至data([]map[string]interface{})
 	_ = json.Unmarshal([]byte(ctx.FormValue("_order")), &data)
 
@@ -301,7 +308,7 @@ func (h *Handler) MenuOrder(ctx *context.Context) {
 	response.Ok(ctx)
 }
 
-// getMenuInfoPanel(取得菜單資訊面板)分別處理上下半部表單的HTML語法，最後結合並輸出HTML
+// getMenuInfoPanel(取得菜單資訊面板)分別處理上下半部(樹狀圖與新建菜單儀表板)表單的HTML語法，最後結合並輸出HTML
 func (h *Handler) getMenuInfoPanel(ctx *context.Context, alert template2.HTML) {
 	// 透過參數ctx回傳目前登入的用戶(Context.UserValue["user"])並轉換成UserModel
 	// 目前登入用戶資料(來自goadmin_users資料表)
@@ -318,10 +325,10 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, alert template2.HTML) {
 	// tree為尋找{{define "tree"}}HTML語法
 	tree := aTree().
 		SetTree((menu.GetGlobalMenu(user, h.conn)).List). // 回傳菜單([]menu.Item)
-		SetEditUrl(h.routePath("menu_edit_show")). // /admin/menu/edit/show
-		SetUrlPrefix(h.config.Prefix()). // /admin
-		SetDeleteUrl(h.routePath("menu_delete")). // /admin/menu/delete
-		SetOrderUrl(h.routePath("menu_order")). // /admin/menu/order
+		SetEditUrl(h.routePath("menu_edit_show")).        // /admin/menu/edit/show
+		SetUrlPrefix(h.config.Prefix()).                  // /admin
+		SetDeleteUrl(h.routePath("menu_delete")).         // /admin/menu/delete
+		SetOrderUrl(h.routePath("menu_order")).           // /admin/menu/order
 		GetContent()
 
 	// GetTreeHeader為TreeAttribute的方法
@@ -360,14 +367,14 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, alert template2.HTML) {
 	// aForm設置FormAttribute(是struct也是interface)
 	// 將參數值設置至FormFields(struct)
 	// 判斷條件後，將FormFields添加至FormAttribute.ContentList([]FormFields)
-    // 接著將符合FormAttribute.TemplateList["components/多個參數"](map[string]string)的值加入text(string)，接著將參數及功能添加給新的模板並解析為模板的主體
+	// 接著將符合FormAttribute.TemplateList["components/多個參數"](map[string]string)的值加入text(string)，接著將參數及功能添加給新的模板並解析為模板的主體
 	// 將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML回傳
 	// menuFormContent(菜單表單內容)首先將值設置至BoxAttribute(是struct也是interface)
 	// 接著將符合BoxAttribute.TemplateList["box"](map[string]string)的值加入text(string)，最後將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML
 	// menuFormContent為尋找{{define "box"}}，將FormInfo(struct)設置至內容及header
 	newForm := menuFormContent(aForm().
-		SetPrefix(h.config.PrefixFixSlash()). // /admin
-		SetUrl(h.routePath("menu_new")). // /admin/menu/new
+		SetPrefix(h.config.PrefixFixSlash()).                     // /admin
+		SetUrl(h.routePath("menu_new")).                          // /admin/menu/new
 		SetPrimaryKey(h.table("menu", ctx).GetPrimaryKey().Name). // id
 		SetHiddenFields(map[string]string{
 			form2.TokenKey:    h.authSrv().AddToken(),
@@ -377,7 +384,7 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, alert template2.HTML) {
 		SetOperationFooter(formFooter("menu", false, false, false)).
 		SetTitle("New").
 		SetContent(formInfo.FieldList).
-		SetTabContents(formInfo.GroupFieldList). // 空
+		SetTabContents(formInfo.GroupFieldList).   // 空
 		SetTabHeaders(formInfo.GroupFieldHeaders)) // 空
 
 	// aCol在plugins\admin\controller\common.go中
