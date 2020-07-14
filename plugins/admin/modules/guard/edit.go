@@ -1,7 +1,6 @@
 package guard
 
 import (
-	"fmt"
 	tmpl "html/template"
 	"mime/multipart"
 	"regexp"
@@ -95,6 +94,7 @@ type EditFormParam struct {
 	IframeID     string
 }
 
+// 取得EditFormParam.MultiForm.Value(map[string][]string)
 func (e EditFormParam) Value() form.Values {
 	return e.MultiForm.Value
 }
@@ -107,7 +107,6 @@ func (g *Guard) EditForm(ctx *context.Context) {
 	// 藉由參數取得multipart/form-data中的__go_admin_previous_值
 	// ex:/admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
 	previous := ctx.FormValue(form.PreviousKey)
-
 
 	// 取得url中__prefix的值
 	panel, prefix := g.table(ctx)
@@ -149,6 +148,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
 	}
 
+	// 取得在multipart/form-data所設定的參數(struct)
 	multiForm := ctx.Request.MultipartForm
 
 	// 取得id
@@ -156,17 +156,18 @@ func (g *Guard) EditForm(ctx *context.Context) {
 	// GetPrimaryKey回傳BaseTable.PrimaryKey
 	id := multiForm.Value[panel.GetPrimaryKey().Name][0]
 
-	// 取得在multipart/form-data所設定的參數
+	// 取得在multipart/form-data所設定的參數(map[string][]string)
 	values := ctx.Request.MultipartForm.Value
 
+	// editFormParamKey= edit_form_param
 	// SetUserValue藉由參數key、value設定Context.UserValue
 	ctx.SetUserValue(editFormParamKey, &EditFormParam{
 		Panel:     panel,
 		Id:        id,
 		Prefix:    prefix,                          // manage or roles or permissions
-		Param:     param.WithPKs(id),               // 將參數(多個string)結合並設置至Parameters.Fields["__pk"]後回傳
+		Param:     param.WithPKs(id),               // 將參數(id)結合並設置至Parameters.Fields["__pk"]後回傳
 		Path:      strings.Split(previous, "?")[0], // ex:/admin/info/manager(roles or permissions)
-		MultiForm: multiForm,
+		MultiForm: multiForm,                       // 取得在multipart/form-data所設定的參數
 		// constant.IframeKey = __goadmin_iframe
 		IsIframe: form.Values(values).Get(constant.IframeKey) == "true", // ex:false
 		// constant.IframeIDKey = __goadmin_iframe_id
@@ -184,7 +185,9 @@ func isInfoUrl(s string) bool {
 	return len(sub) > 2 && !strings.Contains(sub[2], "/")
 }
 
+// 回傳Context.UserValue[edit_form_param]的值(struct)
 func GetEditFormParam(ctx *context.Context) *EditFormParam {
+	// editFormParamKey = edit_form_param
 	return ctx.UserValue[editFormParamKey].(*EditFormParam)
 }
 

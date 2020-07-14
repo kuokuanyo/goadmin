@@ -1251,26 +1251,31 @@ func (f *FormPanel) EnableAjax(msgs ...string) *FormPanel {
 	return f
 }
 
+// 將參數設置至FormPanel.AjaxSuccessJS後回傳
 func (f *FormPanel) SetAjaxSuccessJS(js template.JS) *FormPanel {
 	f.AjaxSuccessJS = js
 	return f
 }
 
+// 將參數設置至FormPanel.AjaxErrorJS後回傳
 func (f *FormPanel) SetAjaxErrorJS(js template.JS) *FormPanel {
 	f.AjaxErrorJS = js
 	return f
 }
 
+// 將參數設置至FormPanel.PostHook後回傳
 func (f *FormPanel) SetPostHook(fn FormPostFn) *FormPanel {
 	f.PostHook = fn
 	return f
 }
 
+// 將參數設置至FormPanel.UpdateFn後回傳
 func (f *FormPanel) SetUpdateFn(fn FormPostFn) *FormPanel {
 	f.UpdateFn = fn
 	return f
 }
 
+// 將參數設置至FormPanel.InsertFn後回傳
 func (f *FormPanel) SetInsertFn(fn FormPostFn) *FormPanel {
 	f.InsertFn = fn
 	return f

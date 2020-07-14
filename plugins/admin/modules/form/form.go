@@ -26,6 +26,7 @@ type Values map[string][]string
 // If there are no values associated with the key, Get returns
 // the empty string. To access multiple values, use the map
 // directly.
+// 透過參數key判斷Values[key]長度是否大於0，如果大於零回傳Values[key][0]，反之回傳""
 func (f Values) Get(key string) string {
 	if len(f[key]) > 0 {
 		return f[key][0]
@@ -35,6 +36,7 @@ func (f Values) Get(key string) string {
 
 // Add adds the value to key. It appends to any existing
 // values associated with key.
+// 將參數key、value加入Values(map[string][]string)中
 func (f Values) Add(key string, value string) {
 	f[key] = []string{value}
 }
@@ -60,6 +62,7 @@ func (f Values) Has(key ...string) bool {
 }
 
 // Delete deletes the values associated with key.
+// 透過參數key刪除Values(map[string][]string)[key]
 func (f Values) Delete(key string) {
 	delete(f, key)
 }

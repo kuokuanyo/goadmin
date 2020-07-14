@@ -64,10 +64,16 @@ func (h *Handler) ShowInfo(ctx *context.Context) {
 
 func (h *Handler) showTableData(ctx *context.Context, prefix string, params parameter.Parameters,
 	panel table.Table, urlNamePrefix string) (table.Table, table.PanelInfo, []string, error) {
+
+	// -------用戶編輯介面會執行---------
 	if panel == nil {
+		// 先透過參數prefix取得Table(interface)，接著判斷條件後將[]context.Node加入至Handler.operations後回傳
 		panel = h.table(prefix, ctx)
 	}
 
+	// WithIsAll在plugins\admin\modules\parameter\parameter.go
+	// WithIsAll判斷條件後，在param.Fields[false](map[string][]string)加入false
+	// GetData在\plugins\admin\modules\table\default.go(table、DefaultTable的方法)
 	panelInfo, err := panel.GetData(params.WithIsAll(false))
 
 	if err != nil {
@@ -276,7 +282,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 	if info.Wrapper != nil {
 		content = info.Wrapper(content)
 	}
- 
+
 	return h.Execute(ctx, user, types.Panel{
 		Content:     content,
 		Description: template2.HTML(panelInfo.Description),
@@ -302,7 +308,7 @@ func (h *Handler) Assets(ctx *context.Context) {
 			return
 		}
 	}
-	
+
 	var contentType = mime.TypeByExtension(path.Ext(filepath))
 
 	if contentType == "" {

@@ -24,6 +24,7 @@ func Delimiter(del, s string) string {
 	return del + s + del
 }
 
+// 判斷第二個參數符號，如果為[則回傳[field(第一個參數)]，否則回傳ex: 'field'
 func FilterField(filed, delimiter string) string {
 	if delimiter == "[" {
 		return "[" + filed + "]"
@@ -31,6 +32,7 @@ func FilterField(filed, delimiter string) string {
 	return delimiter + filed + delimiter
 }
 
+// 判斷arr([]string)長度如果為0回傳true，如果值與第二個參數(string)相等也回傳true，否則回傳false
 func InArrayWithoutEmpty(arr []string, str string) bool {
 	if len(arr) == 0 {
 		return true

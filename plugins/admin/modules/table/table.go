@@ -108,10 +108,10 @@ func (base *BaseTable) GetDetailFromInfo() *types.InfoPanel {
 	return detail
 }
 
-// 將參數值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳
+// 將參數值(BaseTable.PrimaryKey)的值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳FormPanel(struct)
 func (base *BaseTable) GetForm() *types.FormPanel {
 	// 在template\types\info.go中
-	// 將參數值設置至FormPanel(struct).primaryKey中後回傳
+	// 將參數值設置至FormPanel(struct).primaryKey中後回傳FormPanel(struct)
 	return base.Form.SetPrimaryKey(base.PrimaryKey.Name, base.PrimaryKey.Type)
 }
 

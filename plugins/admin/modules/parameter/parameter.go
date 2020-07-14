@@ -72,7 +72,7 @@ func BaseParam() Parameters {
 func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 
 	// Query從url取得設定參數
-	// ex: map[__columns:[id,username,name,goadmin_roles_goadmin_join_name,created_at,updated_at] __go_admin_no_animation_:[true] __page:[1] __pageSize:[10] __prefix:[manager] __sort:[id] __sort_type:[desc] _pjax:[#pjax-container]]
+	// ex: map[__columns:[id,username,name,goadmin_roles_goadmin_join_name,created_at,updated_at] __page:[1] __pageSize:[10]  __sort:[id] __sort_type:[desc] ...]
 	values := u.Query()
 
 	primaryKey := "id"
@@ -84,10 +84,10 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 	}
 
 	// getDefault透過參數key取得url中的值(value)，判斷是否為空，如果是空值回傳第三個參數def，如果不為空則回傳value
-	page := getDefault(values, Page, "1") // __page
+	page := getDefault(values, Page, "1")                                   // __page
 	pageSize := getDefault(values, PageSize, strconv.Itoa(defaultPageSize)) // __pageSize
-	sortField := getDefault(values, Sort, primaryKey) // __sort
-	sortType := getDefault(values, SortType, defaultSortType) // __sort_type
+	sortField := getDefault(values, Sort, primaryKey)                       // __sort
+	sortType := getDefault(values, SortType, defaultSortType)               // __sort_type
 	// 選擇顯示的欄位
 	columns := getDefault(values, Columns, "") // ex: id,username,name,goadmin_roles_goadmin_join_name,created_at,updated_at
 
@@ -182,7 +182,9 @@ func (param Parameters) PKs() []string {
 	return strings.Split(param.GetFieldValue(PrimaryKey), ",")
 }
 
+// 刪除Parameters.Fields[__pk]後回傳
 func (param Parameters) DeletePK() Parameters {
+	// PrimaryKey = __pk
 	delete(param.Fields, PrimaryKey)
 	return param
 }
@@ -193,6 +195,7 @@ func (param Parameters) PK() string {
 	return param.PKs()[0]
 }
 
+// 透過參數__is_all尋找Parameters.Fields[__is_all]是否存在，如果存在則回傳True，反之false
 func (param Parameters) IsAll() bool {
 	return param.GetFieldValue(IsAll) == True
 }
@@ -202,6 +205,7 @@ func (param Parameters) WithURLPath(path string) Parameters {
 	return param
 }
 
+// 判斷條件後，在param.Fields[參數](map[string][]string)加入值
 func (param Parameters) WithIsAll(isAll bool) Parameters {
 	if isAll {
 		param.Fields[IsAll] = []string{True}
@@ -224,7 +228,7 @@ func (param Parameters) GetFilterFieldValueEnd(field string) string {
 	return param.GetFieldValue(field + FilterRangeParamEndSuffix)
 }
 
-// 透過參數field尋找Parameters.Fields[field]是否存在，如果存在則回傳第一個value值(string)
+// 透過參數field尋找Parameters.Fields[field]是否存在，如果存在則回傳第一個value值(string)，不存在則回傳""
 func (param Parameters) GetFieldValue(field string) string {
 	value, ok := param.Fields[field]
 	if ok && len(value) > 0 {
@@ -243,7 +247,9 @@ func (param Parameters) DeleteField(field string) Parameters {
 	return param
 }
 
+// 刪除Parameters.Fields[__goadmin_edit_pk]後回傳
 func (param Parameters) DeleteEditPk() Parameters {
+	// EditPKKey = __goadmin_edit_pk
 	delete(param.Fields, constant.EditPKKey)
 	return param
 }
@@ -261,7 +267,10 @@ func (param Parameters) GetFieldValuesStr(field string) string {
 	return strings.Join(param.Fields[field], Separator)
 }
 
+// 透過參數field+ __goadmin_operator__+suffix尋找Parameters.Fields[field+ __goadmin_operator__+suffix]是否存在(op)，如果op為空則回傳eq，反之則回傳op(string)
 func (param Parameters) GetFieldOperator(field, suffix string) string {
+	// 透過參數field+ __goadmin_operator__+suffix尋找Parameters.Fields[field+ __goadmin_operator__+suffix]是否存在，如果存在則回傳第一個value值(string)
+	// FilterParamOperatorSuffix = __goadmin_operator__
 	op := param.GetFieldValue(field + FilterParamOperatorSuffix + suffix)
 	if op == "" {
 		return "eq"
@@ -363,13 +372,16 @@ func (param Parameters) GetFixedParamStrWithoutSort() string {
 	return "&" + p.Encode()
 }
 
+// 處理param.Fields(map[string][]string)，接著依判斷條件處理參數，最後回傳string, []interface{}, []string
 func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []interface{}, columns, existKeys []string,
 	filterProcess func(string, string, string) string) (string, []interface{}, []string) {
 	var multiKey = make(map[string]uint8)
-	for key, value := range param.Fields {
 
+	// 處理param.Fields，例如用戶介面為ex: map[__is_all:[false]]
+	for key, value := range param.Fields {
 		keyIndexSuffix := ""
 
+		// FilterParamCountInfix = __goadmin_index__
 		keyArr := strings.Split(key, FilterParamCountInfix)
 
 		if len(keyArr) > 1 {
@@ -377,6 +389,7 @@ func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []i
 			keyIndexSuffix = FilterParamCountInfix + keyArr[1]
 		}
 
+		// -------用戶頁面不會執行-------
 		if keyIndexSuffix != "" {
 			multiKey[key] = 0
 		} else if _, exist := multiKey[key]; !exist && modules.InArray(existKeys, key) {
@@ -393,7 +406,9 @@ func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []i
 		} else if len(value) > 1 {
 			op = "in"
 		} else if !strings.Contains(key, FilterParamOperatorSuffix) {
-			op = operators[param.GetFieldOperator(key, keyIndexSuffix)]
+			// -------用戶頁面會執行-----------
+			// GetFieldOperator透過參數key+ __goadmin_operator__+keyIndexSuffix尋找Parameters.Fields[key+ __goadmin_operator__+keyIndexSuffix]是否存在(op)，如果op為空則回傳eq，反之則回傳op(string)
+			op = operators[param.GetFieldOperator(key, keyIndexSuffix)] // op = '='(用戶頁面)
 		}
 
 		if modules.InArray(columns, key) {
@@ -414,7 +429,10 @@ func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []i
 				}
 			}
 		} else {
-			keys := strings.Split(key, FilterParamJoinInfix)
+			// --------用戶頁面會執行--------
+			keys := strings.Split(key, FilterParamJoinInfix) // ex: [__is_all](用戶頁面)
+
+			// ------用戶頁面不會執行--------
 			if len(keys) > 1 {
 				val := filterProcess(key, value[0], keyIndexSuffix)
 				if op == "in" {
@@ -436,7 +454,7 @@ func (param Parameters) Statement(wheres, table, delimiter string, whereArgs []i
 			}
 		}
 
-		existKeys = append(existKeys, key)
+		existKeys = append(existKeys, key) // ex:[__is_all](用戶頁面)
 	}
 
 	if len(wheres) > 3 {

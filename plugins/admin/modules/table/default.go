@@ -102,6 +102,7 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 		beginTime = time.Now()
 	)
 
+	// -------用戶編輯介面不會執行---------
 	if tb.Info.QueryFilterFn != nil {
 		ids, stop := tb.Info.QueryFilterFn(params, tb.db())
 		if stop {
@@ -115,9 +116,11 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 		data, size = tb.getDataFromURL(params)
 	} else if tb.Info.GetDataFn != nil {
 		data, size = tb.Info.GetDataFn(params)
+		// IsAll透過參數__is_all尋找Parameters.Fields[__is_all]是否存在，如果存在則回傳True，反之false
 	} else if params.IsAll() {
 		return tb.getAllDataFromDatabase(params)
 	} else {
+		// -------用戶編輯介面會執行---------
 		return tb.getDataFromDatabase(params)
 	}
 
@@ -238,6 +241,7 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 	}, nil
 }
 
+// getTempModelData透過參數將DefaultTable處理後回傳map[string]types.InfoItem
 func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
 
 	var tempModelData = make(map[string]types.InfoItem)
@@ -385,14 +389,17 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelInfo, error) {
 
 	var (
-		connection     = tb.db()
-		placeholder    = modules.Delimiter(connection.GetDelimiter(), "%s")
+		connection = tb.db()
+		// Delimiter使用該資料庫引擎的符號
+		placeholder    = modules.Delimiter(connection.GetDelimiter(), "%s") // ex: '%s'(mysql)
 		queryStatement string
 		countStatement string
-		ids            = params.PKs()
-		pk             = tb.Info.Table + "." + modules.Delimiter(connection.GetDelimiter(), tb.PrimaryKey.Name)
+		// 透過參數__pk尋找Parameters.Fields[__pk]是否存在，如果存在則回傳第一個value值(string)並且用","拆解成[]string
+		ids = params.PKs()                                                                           // ex:[]
+		pk  = tb.Info.Table + "." + modules.Delimiter(connection.GetDelimiter(), tb.PrimaryKey.Name) // ex: goadmin_users.`id`
 	)
 
+	// 判斷是否資料庫引擎為postgresql
 	if connection.Name() == db.DriverPostgresql {
 		placeholder = "%s"
 	}
@@ -409,6 +416,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		// %s means: table, join table, pk values
 		countStatement = "select count(*) " + countExtra + " from " + placeholder + " %s where " + pk + " in (%s)"
 	} else {
+		// -------用戶編輯介面會執行---------
 		if connection.Name() == db.DriverMssql {
 			// %s means: order by field, order by type, fields, table, join table, wheres, group by
 			queryStatement = "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s." + placeholder + " %s) as ROWNUMBER_, %s from " +
@@ -423,8 +431,11 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 	}
 
-	columns, _ := tb.getColumns(tb.Info.Table)
+	// getColumns(取得資料表欄位)將欄位名稱加入columns([]string)
+	// 如果有值是primary_key並且自動遞增則bool = true，最後回傳欄位名稱及bool
+	columns, _ := tb.getColumns(tb.Info.Table) // ex: tb.Info.Table = goadmin_users
 
+	// 透過參數並且將欄位、join語法...等資訊處理後，回傳[]TheadItem、欄位名稱、joinFields(ex:group_concat(goadmin_roles.`name`...)、join語法(left join....)、合併的資料表、可篩選過濾的欄位
 	thead, fields, joinFields, joins, joinTables, filterForm := tb.getTheadAndFilterForm(params, columns)
 
 	fields += pk
@@ -433,7 +444,9 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	groupFields := fields
 
 	if joinFields != "" {
+		// 將fields加上joinFields字串相加
 		allFields += "," + joinFields[:len(joinFields)-1]
+		// mssql引擎才會執行下面語法處理
 		if connection.Name() == db.DriverMssql {
 			for _, field := range tb.Info.FieldList {
 				if field.TypeName == db.Text || field.TypeName == db.Longtext {
@@ -446,6 +459,8 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 	}
 
+	// params.SortField = id(依id排序)
+	// --------用戶介面不會執行----------
 	if !modules.InArray(columns, params.SortField) {
 		params.SortField = tb.PrimaryKey.Name
 	}
@@ -457,6 +472,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		existKeys = make([]string, 0)
 	)
 
+	// -------用戶介面的ids為空[]
 	if len(ids) > 0 {
 		for _, value := range ids {
 			if value != "" {
@@ -466,12 +482,19 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 		wheres = wheres[:len(wheres)-1]
 	} else {
-
+		// -----用戶介面會執行------
 		// parameter
+		// Statement在plugins\admin\modules\parameter\parameter.go
+		// Statement處理param.Fields(map[string][]string)，接著依判斷條件處理參數，最後回傳string, []interface{}, []string
 		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), whereArgs, columns, existKeys,
 			tb.Info.FieldList.GetFieldFilterProcessValue)
+
 		// pre query
+		// Statement在\template\types\info.go
+		// ----用戶頁面DefaultTable.Info.Wheres為空，回傳的值不變-------
 		wheres, whereArgs = tb.Info.Wheres.Statement(wheres, connection.GetDelimiter(), whereArgs, existKeys, columns)
+
+		//// ----用戶頁面DefaultTable.Info.WhereRaws為空，回傳的值不變-------
 		wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 		if wheres != "" {
@@ -487,6 +510,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	groupBy := ""
 	if len(joinTables) > 0 {
+		// mssql執行
 		if connection.Name() == db.DriverMssql {
 			groupBy = " GROUP BY " + groupFields
 		} else {
@@ -496,6 +520,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	queryCmd := ""
 	if connection.Name() == db.DriverMssql && len(ids) == 0 {
+		// mssql執行
 		queryCmd = fmt.Sprintf(queryStatement, tb.Info.Table, params.SortField, params.SortType,
 			allFields, tb.Info.Table, joins, wheres, groupBy)
 	} else {
@@ -503,10 +528,10 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 			tb.Info.Table, params.SortField, params.SortType)
 	}
 
+	// 印出sql資訊
 	logger.LogSQL(queryCmd, args)
 
 	res, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
-
 	if err != nil {
 		return PanelInfo{}, err
 	}
@@ -514,6 +539,10 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	infoList := make([]map[string]types.InfoItem, 0)
 
 	for i := 0; i < len(res); i++ {
+		fmt.Println("***********")
+		fmt.Println(res[i])
+		fmt.Println(tb.getTempModelData(res[i], params, columns))
+		// getTempModelData透過參數將DefaultTable處理後回傳map[string]types.InfoItem
 		infoList = append(infoList, tb.getTempModelData(res[i], params, columns))
 	}
 
@@ -733,8 +762,11 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 }
 
 // UpdateData update data.
+// 先將參數(map[string][]string)資料整理，接著判斷條件後執行資料更新的動作
 func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 
+	// PostTypeKey = __go_admin_post_type
+	// 將參數__go_admin_post_type、0加入dataList(map[string][]string)中
 	dataList.Add(form.PostTypeKey, "0")
 
 	var (
@@ -742,9 +774,13 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 		err    error
 	)
 
+	// 編輯頁面時一般tb.Form.PostHook = nil
+	// -------用戶編輯介面不會執行---------
 	if tb.Form.PostHook != nil {
 		defer func() {
+			// PostTypeKey = __go_admin_post_type
 			dataList.Add(form.PostTypeKey, "0")
+			// PostResultKey = __go_admin_post_result
 			dataList.Add(form.PostResultKey, errMsg)
 			go func() {
 				defer func() {
@@ -761,6 +797,8 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 		}()
 	}
 
+	// 編輯頁面時一般tb.Form.Validator = nil
+	// -------用戶編輯介面不會執行---------
 	if tb.Form.Validator != nil {
 		if err := tb.Form.Validator(dataList); err != nil {
 			errMsg = "post error: " + err.Error()
@@ -768,12 +806,18 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 		}
 	}
 
+	// 編輯頁面時一般tb.Form.PreProcessFn = nil
+	// -------用戶編輯介面不會執行---------
 	if tb.Form.PreProcessFn != nil {
 		dataList = tb.Form.PreProcessFn(dataList)
 	}
 
 	if tb.Form.UpdateFn != nil {
+		// ----------用戶、角色會執行-----------
+		// PostTypeKey = __go_admin_post_type
+		// Delete透過參數key刪除Values(map[string][]string)[__go_admin_post_type]
 		dataList.Delete(form.PostTypeKey)
+		// 更新資料
 		err = tb.Form.UpdateFn(dataList)
 		if err != nil {
 			errMsg = "post error: " + err.Error()
@@ -781,7 +825,9 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 		return err
 	}
 
+	// ------------權限會執行--------------
 	_, err = tb.sql().Table(tb.Form.Table).
+		// Get透過參數key判斷Values[key]長度是否大於0，如果大於零回傳Values[key][0]，反之回傳""
 		Where(tb.PrimaryKey.Name, "=", dataList.Get(tb.PrimaryKey.Name)).
 		Update(tb.getInjectValueFromFormValue(dataList, types.PostTypeUpdate))
 
@@ -1025,14 +1071,17 @@ func (tb *DefaultTable) delete(table, key string, values []string) error {
 		Delete()
 }
 
+// 透過參數並且將欄位、join語法...等資訊處理後，回傳[]TheadItem、欄位名稱、joinFields(ex:group_concat(goadmin_roles.`name`...)、合併的資料表、可篩選過濾的欄位
 func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, columns Columns) (types.Thead,
 	string, string, string, []string, []types.FormField) {
 
+	// GetTheadAndFilterForm在template\types\info.go
+	// GetTheadAndFilterForm透過參數並且將欄位、join語法...等資訊處理後，回傳[]TheadItem、欄位名稱、joinFields(ex:group_concat(goadmin_roles.`name`...)、合併的資料表、可篩選過濾的欄位
 	return tb.Info.FieldList.GetTheadAndFilterForm(types.TableInfo{
-		Table:      tb.Info.Table,
-		Delimiter:  tb.delimiter(),
-		Driver:     tb.connectionDriver,
-		PrimaryKey: tb.PrimaryKey.Name,
+		Table:      tb.Info.Table,       // ex: goadmin_users
+		Delimiter:  tb.delimiter(),      // ex:'
+		Driver:     tb.connectionDriver, // ex: mysql
+		PrimaryKey: tb.PrimaryKey.Name,  // ex: id
 	}, params, columns, func() *db.SQL {
 		return tb.sql()
 	})

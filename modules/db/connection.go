@@ -112,6 +112,7 @@ func GetConnection(srvs service.List) Connection {
 	panic("wrong service")
 }
 
+// 取得資料庫引擎的Aggregation表達式，將參數值加入表達式
 func GetAggregationExpression(driver, field, headField, delimiter string) string {
 	switch driver {
 	case "postgresql":

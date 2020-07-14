@@ -171,6 +171,7 @@ type FilterFormField struct {
 	ProcessFn   func(string) string
 }
 
+// 將Field(struct)透過參數Parameters(struct)及string處理後回傳[]FormField
 func (f Field) GetFilterFormFields(params parameter.Parameters, headField string, sql ...*db.SQL) []FormField {
 
 	var (
@@ -178,8 +179,8 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		value, value2, keySuffix string
 	)
 
+	// 處理可以篩選條件的欄位
 	for index, filter := range f.FilterFormFields {
-
 		if index > 0 {
 			keySuffix = parameter.FilterParamCountInfix + strconv.Itoa(index)
 		}
@@ -193,6 +194,8 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 			if filter.Operator == FilterOperatorFree {
 				value2 = GetOperatorFromValue(params.GetFieldOperator(headField, keySuffix)).String()
 			}
+			// -------用戶頁面會執行(使用者、暱稱、角色欄位)，value回傳空值--------------
+			// GetFieldValue透過參數field尋找Parameters.Fields[field]是否存在，如果存在則回傳第一個value值(string)
 			value = params.GetFieldValue(headField + keySuffix)
 		}
 
@@ -202,6 +205,7 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		)
 
 		if filter.OptionExt == template.JS("") {
+			// ------------用戶頁面的三個篩選欄位會執行--------------
 			op1, op2, js := filter.Type.GetDefaultOptions(headField + keySuffix)
 			if op1 != nil {
 				s, _ := json.Marshal(op1)
@@ -276,62 +280,93 @@ type TableInfo struct {
 	Driver     string
 }
 
+// 透過參數並且將欄位、join語法...等資訊處理後，回傳[]TheadItem、欄位名稱、joinFields(ex:group_concat(goadmin_roles.`name`...)、join語法(left join....)、合併的資料表、可篩選過濾的欄位
 func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columns []string,
 	sql ...func() *db.SQL) (Thead, string, string, string, []string, []FormField) {
 	var (
 		thead      = make(Thead, 0)
-		fields     = ""
-		joinFields = ""
-		joins      = ""
-		joinTables = make([]string, 0)
-		filterForm = make([]FormField, 0)
+		fields     = ""                   // 欄位
+		joinFields = ""                   // ex: group_concat(goadmin_roles.`name` separator 'CkN694kH') as goadmin_roles_goadmin_join_name,
+		joins      = ""                   // join資料表語法，ex: left join `goadmin_role_users` on goadmin_role_users.`user_id` = goadmin_users.`id` left join....
+		joinTables = make([]string, 0)    // ex:{goadmin_roles role_id id goadmin_role_users}(用戶頁面)
+		filterForm = make([]FormField, 0) // 可以篩選過濾的欄位
 	)
+
+	// field為介面顯示的欄位
 	for _, field := range f {
+
 		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) &&
+			// Valid對joins([]join(struct))執行迴圈，假設Join的Table、Field、JoinField都不為空，回傳true
 			!field.Joins.Valid() {
+			// 欄位在columns裡以及不是primary key會執行，在欄位名稱前加入資料表名(ex: tablename.colname)
+			// ex: goadmin_users.`username`,goadmin_users.`name`,goadmin_users.`created_at`,goadmin_users.`updated_at`,
 			fields += info.Table + "." + modules.FilterField(field.Field, info.Delimiter) + ","
 		}
 
 		headField := field.Field
 
+		// -------------編輯介面(用戶的roles欄位會執行)-------------
+		// 處理join語法
+		// 例如用戶頁面的role欄位需要與其他表join取得角色，因此Joins([]Join)為ex: [{goadmin_role_users id user_id } {goadmin_roles role_id id goadmin_role_users}]
+		// Valid對joins([]join(struct))執行迴圈，假設Join的Table、Field、JoinField都不為空，回傳true
 		if field.Joins.Valid() {
+			// Last判斷Joins([]Join)長度，如果大於0回傳Joins[len(j)-1](最後一個數值)(struct)
+			// FilterParamJoinInfix = _goadmin_join_
+			// ex:goadmin_roles_goadmin_join_name
 			headField = field.Joins.Last().Table + parameter.FilterParamJoinInfix + field.Field
+
+			// GetAggregationExpression取得資料庫引擎的Aggregation表達式，將參數值加入表達式
+			// FilterField判斷第二個參數符號，如果為[則回傳[field(第一個參數)]，否則回傳ex: 'field'(mysql)
+			// ex: group_concat(goadmin_roles.`name` separator 'CkN694kH') as goadmin_roles_goadmin_join_name,
 			joinFields += db.GetAggregationExpression(info.Driver, field.Joins.Last().Table+"."+
 				modules.FilterField(field.Field, info.Delimiter), headField, JoinFieldValueDelimiter) + ","
+
 			for _, join := range field.Joins {
 				if !modules.InArray(joinTables, join.Table) {
 					joinTables = append(joinTables, join.Table)
 					if join.BaseTable == "" {
+						// ex: goadmin_users(用戶頁面)
 						join.BaseTable = info.Table
 					}
+					// FilterField判斷第二個參數符號，如果為[則回傳[field(第一個參數)]，否則回傳ex: 'field'(mysql)
+					// ex: joins =  left join `goadmin_role_users` on goadmin_role_users.`user_id` = goadmin_users.`id` left join....
 					joins += " left join " + modules.FilterField(join.Table, info.Delimiter) + " on " +
 						join.Table + "." + modules.FilterField(join.JoinField, info.Delimiter) + " = " +
 						join.BaseTable + "." + modules.FilterField(join.Field, info.Delimiter)
+
 				}
 			}
 		}
 
+		// 可以做篩選的欄位，例如用戶頁面的用戶名、暱稱、角色
 		if field.Filterable {
 			if len(sql) > 0 {
+				// GetFilterFormFields透過參數Parameters(struct)及string處理後回傳[]FormField
 				filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql[0]())...)
 			} else {
 				filterForm = append(filterForm, field.GetFilterFormFields(params, headField)...)
 			}
 		}
 
+		// 檢查欄位是否隱藏
 		if field.Hide {
 			continue
 		}
+
+		// 將值設置至TheadItem(struct)並添加至thead([]TheadItem)
 		thead = append(thead, TheadItem{
-			Head:       field.Head,
-			Sortable:   field.Sortable,
-			Field:      headField,
+			Head:     field.Head,
+			Sortable: field.Sortable, // 是否可以排序
+			Field:    headField,
+			// 判斷params.Columns([]string)長度如果為0回傳true，如果值與第二個參數(string)相等也回傳true，否則回傳false
+			// params.Columns為顯示的欄位
 			Hide:       !modules.InArrayWithoutEmpty(params.Columns, headField),
 			Editable:   field.EditAble,
 			EditType:   field.EditType.String(),
 			EditOption: field.EditOptions,
 			Width:      strconv.Itoa(field.Width) + "px",
 		})
+
 	}
 
 	return thead, fields, joinFields, joins, joinTables, filterForm
@@ -386,6 +421,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 }
 
 func (f FieldList) GetFieldFilterProcessValue(key, value, keyIndex string) string {
+
 	field := f.GetFieldByFieldName(key)
 	index := 0
 	if keyIndex != "" {
@@ -458,6 +494,7 @@ func (j Joins) Valid() bool {
 	return false
 }
 
+// 判斷Joins([]Join)長度，如果大於0回傳Joins[len(j)-1](最後一個數值)
 func (j Joins) Last() Join {
 	if len(j) > 0 {
 		return j[len(j)-1]
@@ -592,6 +629,7 @@ type Wheres []Where
 
 func (whs Wheres) Statement(wheres, delimiter string, whereArgs []interface{}, existKeys, columns []string) (string, []interface{}) {
 	pwheres := ""
+
 	for k, wh := range whs {
 
 		whFieldArr := strings.Split(wh.Field, ".")
