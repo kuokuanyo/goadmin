@@ -119,6 +119,9 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 	}
 }
 
+// 首先取得multipart/form-data所設定的參數，接著更新資料數值
+// 接著透過處理sql語法後接著取得資料表所有資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo為頁面上所有的資料
+// 接著將所有頁面的HTML處理並回傳(包括標頭、過濾條件、所有顯示的資料)
 func (h *Handler) EditForm(ctx *context.Context) {
 
 	// GetEditFormParam回傳Context.UserValue[edit_form_param]的值(struct)
@@ -165,13 +168,13 @@ func (h *Handler) EditForm(ctx *context.Context) {
 		return
 	}
 
-	// -------用戶編輯介面不會執行---------
+	// -------編輯介面不會執行---------
 	if param.Panel.GetForm().Responder != nil {
 		param.Panel.GetForm().Responder(ctx)
 		return
 	}
 
-	// -------用戶編輯介面不會執行---------
+	// -------編輯介面不會執行---------
 	if ctx.WantJSON() && !param.IsIframe {
 		response.OkWithData(ctx, map[string]interface{}{
 			"url": param.PreviousPath,
@@ -179,7 +182,7 @@ func (h *Handler) EditForm(ctx *context.Context) {
 		return
 	}
 
-	// -------用戶編輯介面不會執行---------
+	// -------編輯介面不會執行---------
 	if !param.FromList {
 		if isNewUrl(param.PreviousPath, param.Prefix) {
 			h.showNewForm(ctx, param.Alert, param.Prefix, param.Param.DeleteEditPk().GetRouteParamStr(), true)
@@ -196,7 +199,7 @@ func (h *Handler) EditForm(ctx *context.Context) {
 		return
 	}
 
-	// -------用戶編輯介面不會執行---------
+	// -------編輯介面不會執行---------
 	if param.IsIframe {
 		ctx.HTML(http.StatusOK, fmt.Sprintf(`<script>
 		swal('%s', '', 'success');
@@ -211,6 +214,8 @@ func (h *Handler) EditForm(ctx *context.Context) {
 	// DeletePK刪除Parameters.Fields[__pk]後回傳
 	// DeleteEditPk刪除Parameters.Fields[__goadmin_edit_pk]後回傳
 	// param.Prefix = manager、roles or permission
+	// showTable首先透過處理sql語法後接著取得資料表所有資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo為頁面上所有的資料
+	// 接著將所有頁面的HTML處理並回傳(包括標頭、過濾條件、所有顯示的資料)
 	buf := h.showTable(ctx, param.Prefix, param.Param.DeletePK().DeleteEditPk(), nil)
 
 	ctx.HTML(http.StatusOK, buf.String())

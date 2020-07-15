@@ -84,6 +84,7 @@ func AorB(condition bool, a, b string) string {
 	return b
 }
 
+// 判斷第一個(condition)參數，如果true則回傳第二個參數，否則回傳""
 func AorEmpty(condition bool, a string) string {
 	if condition {
 		return a

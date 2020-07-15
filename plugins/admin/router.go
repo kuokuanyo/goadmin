@@ -111,9 +111,15 @@ func (admin *Admin) initRouter() *Admin {
 
 	// EditForm(編輯表單)編輯用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
 	// 接著取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)，最後設定Context.UserValue並執行編輯表單的動作
+	// 首先取得multipart/form-data所設定的參數，接著更新資料數值
+	// 接著透過處理sql語法後接著取得資料表所有資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo為頁面上所有的資料
+	// 接著將所有頁面的HTML處理並回傳(包括標頭、過濾條件、所有顯示的資料)
 	authPrefixRoute.POST("/edit/:__prefix", admin.guardian.EditForm, admin.handler.EditForm).Name("edit")
 
+	// NewForm(新增表單)新增用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
+	// 接著取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)，最後設定Context.UserValue並執行新增表單的動作
 	authPrefixRoute.POST("/new/:__prefix", admin.guardian.NewForm, admin.handler.NewForm).Name("new")
+	
 	authPrefixRoute.POST("/delete/:__prefix", admin.guardian.Delete, admin.handler.Delete).Name("delete")
 	authPrefixRoute.POST("/export/:__prefix", admin.guardian.Export, admin.handler.Export).Name("export")
 	authPrefixRoute.GET("/info/:__prefix", admin.handler.ShowInfo).Name("info")

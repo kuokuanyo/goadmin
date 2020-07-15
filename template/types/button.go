@@ -146,6 +146,7 @@ func (b *ActionButton) Content() (template.HTML, template.JS) {
 
 type Buttons []Button
 
+// 取得HTML及JSON
 func (b Buttons) Content() (template.HTML, template.JS) {
 	h := template.HTML("")
 	j := template.JS("")

@@ -2,9 +2,10 @@ package controller
 
 import (
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	template2 "html/template"
 	"net/http"
+
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
@@ -95,9 +96,11 @@ func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix
 // NewForm insert a table row into database.
 func (h *Handler) NewForm(ctx *context.Context) {
 
+	// GetNewFormParam回傳Context.UserValue[new_form_param]的值(struct)
 	param := guard.GetNewFormParam(ctx)
 
 	// process uploading files, only support local storage
+	// 如果有上傳頭像檔案才會執行，否則為空map[]
 	if len(param.MultiForm.File) > 0 {
 		err := file.GetFileEngine(h.config.FileUploadEngine.Name).Upload(param.MultiForm)
 		if err != nil {
@@ -110,6 +113,8 @@ func (h *Handler) NewForm(ctx *context.Context) {
 		}
 	}
 
+	// Value回傳NewFormParam.MultiForm.Value
+	// InsertData在plugins\admin\modules\table\default.go
 	err := param.Panel.InsertData(param.Value())
 	if err != nil {
 		if ctx.WantJSON() {

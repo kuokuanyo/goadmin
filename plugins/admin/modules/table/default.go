@@ -94,6 +94,7 @@ func (tb *DefaultTable) Copy() Table {
 }
 
 // GetData query the data set.
+// 透過參數處理sql語法後取得資料表資料並將值設置至PanelInfo(struct)後回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) {
 
 	var (
@@ -121,6 +122,9 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 		return tb.getAllDataFromDatabase(params)
 	} else {
 		// -------用戶編輯介面會執行---------
+		// 透過參數並且將欄位、join語法...等資訊處理後，回傳[]TheadItem、欄位名稱、joinFields(ex:group_concat(goadmin_roles.`name`...)、join語法(left join....)、合併的資料表、可篩選過濾的欄位
+		// 接著取得資料表資料後，判斷條件處理field(struct)數值(DefaultTable.Info.FieldList的迴圈)後將值加入map[string]types.InfoItem後回傳(如果沒有選擇顯示的欄位則直接跳過該欄位)
+		// 最後將值設置至PanelInfo(struct)並回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 		return tb.getDataFromDatabase(params)
 	}
 
@@ -241,40 +245,60 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 	}, nil
 }
 
-// getTempModelData透過參數將DefaultTable處理後回傳map[string]types.InfoItem
+// getTempModelData透過參數取得顯示在頁面上的資料(只取得選擇要顯示的欄位)
+// 判斷條件後，處理field(struct)數值(DefaultTable.Info.FieldList的迴圈)後將值加入map[string]types.InfoItem後回傳(如果沒有選擇顯示的欄位則直接跳過該欄位)
+// 不管有沒有選擇要顯示ID欄位，都會將ID數值加入map[string]types.InfoItem
 func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
 
 	var tempModelData = make(map[string]types.InfoItem)
 	headField := ""
 
+	// 判斷條件(第三個參數)後，接著判斷數值類型並轉換成該類型回傳
+	// DefaultTable.PrimaryKey.type = INT，tb.PrimaryKey.Name = Id
+	// primaryKeyValue取得id(主鍵)的值
 	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], len(columns) == 0)
 
+	// DefaultTable.Info.FieldList為介面的欄位
 	for _, field := range tb.Info.FieldList {
 
-		headField = field.Field
+		headField = field.Field // 欄位名稱
 
+		// 用戶介面的角色欄位會執行(因為需要join其他表)
 		if field.Joins.Valid() {
+			// Last判斷Joins([]Join)長度，如果大於0回傳Joins[len(j)-1](最後一個數值)
+			// FilterParamJoinInfix = _goadmin_join_
+			// ex: goadmin_roles_goadmin_join_name
 			headField = field.Joins.Last().Table + parameter.FilterParamJoinInfix + field.Field
 		}
 
+		// -------用戶介面不會執行--------
 		if field.Hide {
 			continue
 		}
+
+		// InArrayWithoutEmpty判斷arr([]string)長度如果為0回傳true，如果值與第二個參數(string)相等也回傳true，否則回傳false
+		// params.Columns為頁面中所選擇顯示的欄位
+		// 如果沒有選擇要顯示該欄位則直接continue
 		if !modules.InArrayWithoutEmpty(params.Columns, headField) {
 			continue
 		}
 
-		typeName := field.TypeName
-
+		typeName := field.TypeName // 欄位數值類型
+		// 將有join其他資料表的欄位(例如用戶頁面的角色欄位)類別設為VARCHAR
 		if field.Joins.Valid() {
 			typeName = db.Varchar
 		}
 
+		// 判斷條件(第三個參數)後，接著判斷數值類型並轉換成該類型回傳
+		// 轉換數值類別並取得欄位的數值
 		combineValue := db.GetValueFromDatabaseType(typeName, res[headField], len(columns) == 0).String()
 
 		// TODO: ToDisplay some same logic execute repeatedly, it can be improved.
 		var value interface{}
+		// 取得欄位的值，特別的是角色欄位會取得ex: <span class="label label-succ.....HTML語法
 		if len(columns) == 0 || modules.InArray(columns, headField) || field.Joins.Valid() {
+			// ToDisplay在\template\types\display.go
+			// ToDisplay透過參數執行function取得值，接著判斷條件後回傳數值(interface{})
 			value = field.ToDisplay(types.FieldModel{
 				ID:    primaryKeyValue.String(),
 				Value: combineValue,
@@ -287,12 +311,15 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 				Row:   res,
 			})
 		}
+
+		// 設置InfoItem(struct)至map[string]types.InfoItem
 		if valueStr, ok := value.(string); ok {
 			tempModelData[headField] = types.InfoItem{
 				Content: template.HTML(valueStr),
 				Value:   combineValue,
 			}
 		} else {
+			// 有join其他表的欄位(角色欄位)會執行
 			tempModelData[headField] = types.InfoItem{
 				Content: value.(template.HTML),
 				Value:   combineValue,
@@ -300,23 +327,32 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		}
 	}
 
+	// DefaultTable.PrimaryKey.Name = id
+	// 取得主鍵(id)的欄位資訊Field(struct)
 	primaryKeyField := tb.Info.FieldList.GetFieldByFieldName(tb.PrimaryKey.Name)
+
+	// ToDisplay透過參數執行function取得值，接著判斷條件後回傳數值(interface{})
+	// 取得id(interface{})
 	value := primaryKeyField.ToDisplay(types.FieldModel{
 		ID:    primaryKeyValue.String(),
 		Value: primaryKeyValue.String(),
 		Row:   res,
 	})
+
 	if valueStr, ok := value.(string); ok {
+
 		tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
 			Content: template.HTML(valueStr),
 			Value:   primaryKeyValue.String(),
 		}
 	} else {
+
 		tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
 			Content: value.(template.HTML),
 			Value:   primaryKeyValue.String(),
 		}
 	}
+
 	return tempModelData
 }
 
@@ -386,6 +422,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 }
 
 // TODO: refactor
+// 透過參數處理sql語法後接著取得資料表資料，判斷條件處理最後將值設置至PanelInfo(struct)並回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位資訊
 func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelInfo, error) {
 
 	var (
@@ -538,20 +575,22 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	infoList := make([]map[string]types.InfoItem, 0)
 
+	// 將取得的資料處理
 	for i := 0; i < len(res); i++ {
-		fmt.Println("***********")
-		fmt.Println(res[i])
-		fmt.Println(tb.getTempModelData(res[i], params, columns))
-		// getTempModelData透過參數將DefaultTable處理後回傳map[string]types.InfoItem
+		// getTempModelData透過參數取得顯示在頁面上的資料(只取得選擇要顯示的欄位)
+		// 判斷條件後，處理field(struct)數值(DefaultTable.Info.FieldList的迴圈)後將值加入map[string]types.InfoItem後回傳(如果沒有選擇顯示的欄位則直接跳過該欄位)
+		// 不管有沒有選擇要顯示ID欄位，都會將數值加入map[string]types.InfoItem
 		infoList = append(infoList, tb.getTempModelData(res[i], params, columns))
 	}
 
 	// TODO: use the dialect
 	var size int
 
+	// 用戶頁面的ids為空
 	if len(ids) == 0 {
+		// countCmd的指令為查詢符合結果的資料數量
 		countCmd := fmt.Sprintf(countStatement, tb.Info.Table, joins, wheres)
-
+		// ex: total: [map[count(*):4]](4筆)
 		total, err := connection.QueryWithConnection(tb.connection, countCmd, whereArgs...)
 
 		if err != nil {
@@ -565,7 +604,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		} else if tb.connectionDriver == db.DriverMssql {
 			size = int(total[0]["size"].(int64))
 		} else {
-			size = int(total[0]["count(*)"].(int64))
+			size = int(total[0]["count(*)"].(int64)) // ex:4(4筆符合)
 		}
 	}
 
@@ -573,13 +612,13 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	return PanelInfo{
 		Thead:    thead,
-		InfoList: infoList,
+		InfoList: infoList, // 判斷條件後，處理field(struct)數值(DefaultTable.Info.FieldList的迴圈)後將值加入map[string]types.InfoItem後回傳(如果沒有選擇顯示的欄位則直接跳過該欄位)
 		Paginator: tb.GetPaginator(size, params,
 			template.HTML(fmt.Sprintf("<b>"+language.Get("query time")+": </b>"+
 				fmt.Sprintf("%.3fms", endTime.Sub(beginTime).Seconds()*1000)))),
-		Title:          tb.Info.Title,
-		FilterFormData: filterForm,
-		Description:    tb.Info.Description,
+		Title:          tb.Info.Title,       // 左上角主題
+		FilterFormData: filterForm,          // 可以篩選條件的欄位
+		Description:    tb.Info.Description, //主題旁的描述
 	}, nil
 }
 
@@ -845,6 +884,8 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 // InsertData insert data.
 func (tb *DefaultTable) InsertData(dataList form.Values) error {
 
+	// __go_admin_post_type = PostTypeKey
+	// 將__go_admin_post_type:1 加入至map[string][]string
 	dataList.Add(form.PostTypeKey, "1")
 
 	var (
@@ -853,10 +894,14 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 		errMsg = ""
 	)
 
+	// 新建頁面為nil
+	// -------------只有新增權限會執行----------------
 	if tb.Form.PostHook != nil {
 		defer func() {
+			// PostTypeKey = __go_admin_post_type
 			dataList.Add(form.PostTypeKey, "1")
 			dataList.Add(tb.GetPrimaryKey().Name, strconv.Itoa(int(id)))
+			// PostResultKey = __go_admin_post_result
 			dataList.Add(form.PostResultKey, errMsg)
 
 			go func() {
@@ -874,6 +919,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 		}()
 	}
 
+	// -------------只有新增權限會執行----------------
 	if tb.Form.Validator != nil {
 		if err := tb.Form.Validator(dataList); err != nil {
 			errMsg = "post error: " + err.Error()
@@ -881,11 +927,15 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 		}
 	}
 
+	// 新增頁面都為nil
 	if tb.Form.PreProcessFn != nil {
 		dataList = tb.Form.PreProcessFn(dataList)
 	}
 
+	// 用戶及角色頁面都不為空，會執行新增資料的動作，執行後return結果
+	// 新增權限頁面不會執行
 	if tb.Form.InsertFn != nil {
+		// PostTypeKey = __go_admin_post_type
 		dataList.Delete(form.PostTypeKey)
 		err = tb.Form.InsertFn(dataList)
 		if err != nil {
@@ -894,6 +944,9 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 		return err
 	}
 
+	// --------------新增權限頁面才會執行下面動作，用戶及角色在上面動作已經return------------
+	// Table將SQL(struct)資訊清除後將參數設置至SQL.TableName回傳
+	// dataList除了設定的參數還有__go_admin_post_type:[1]
 	id, err = tb.sql().Table(tb.Form.Table).Insert(tb.getInjectValueFromFormValue(dataList, types.PostTypeCreate))
 
 	// NOTE: some errors should be ignored.

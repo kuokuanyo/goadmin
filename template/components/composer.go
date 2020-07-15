@@ -15,7 +15,7 @@ func ComposeHtml(temList map[string]string, compo interface{}, templateName ...s
 
 	// 將map[string]string符合key的值加入text
 	var text = ""
-	
+
 	// fmt.Println(temList["components/box"])
 	for _, v := range templateName {
 		text += temList["components/"+v]
@@ -39,7 +39,7 @@ func ComposeHtml(temList map[string]string, compo interface{}, templateName ...s
 	if err != nil {
 		fmt.Println("ComposeHtml Error:", err)
 	}
-	
+
 	// 將buffer輸出成HTML
 	return template.HTML(buffer.String())
 }

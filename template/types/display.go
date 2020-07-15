@@ -2,11 +2,12 @@ package types
 
 import (
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/template/types/form"
 	"html"
 	"html/template"
 	"strings"
+
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
 type DisplayFnGenerator interface {
@@ -34,9 +35,11 @@ type FieldDisplay struct {
 	DisplayProcessChains DisplayProcessFnChains
 }
 
+// 透過參數執行function取得值，接著判斷條件後回傳數值(interface{})
 func (f FieldDisplay) ToDisplay(value FieldModel) interface{} {
+	// FieldDisplay.Display(func(value FieldModel) interface{})
 	val := f.Display(value)
-
+	// IsNotSelectRes判斷參數類別，如果為HTML、[]string、[][]string則回傳false
 	if len(f.DisplayProcessChains) > 0 && f.IsNotSelectRes(val) {
 		valStr := fmt.Sprintf("%v", val)
 		for _, process := range f.DisplayProcessChains {
@@ -52,6 +55,7 @@ func (f FieldDisplay) ToDisplay(value FieldModel) interface{} {
 	return val
 }
 
+// IsNotSelectRes判斷參數類別，如果為HTML、[]string、[][]string則回傳false
 func (f FieldDisplay) IsNotSelectRes(v interface{}) bool {
 	switch v.(type) {
 	case template.HTML:

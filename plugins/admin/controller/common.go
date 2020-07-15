@@ -127,13 +127,14 @@ func (h *Handler) route(name string) context.Router {
 	return h.routes.Get(name)
 }
 
-// 透過參數name、value(...string)取得該路徑名稱的URL
+// 透過參數name取得該路徑名稱的URL、如果參數value大於零，則處理url中有:__的字串
 func (h *Handler) routePath(name string, value ...string) string {
 	// Get藉由參數name取得Router(struct)，Router裡有Methods([]string)及Pattern(string)
 	// GetURL處理URL後回傳(處理url中有:__的字串)
 	return h.routes.Get(name).GetURL(value...)
 }
 
+// 透過參數name取得該路徑名稱的URL，將url中的:__prefix改成第二個參數(prefix)
 func (h *Handler) routePathWithPrefix(name string, prefix string) string {
 	return h.routePath(name, "prefix", prefix)
 }
@@ -270,10 +271,16 @@ func aTree() types.TreeAttribute {
 }
 
 func aTable() types.TableAttribute {
+	// aTemplate判斷templateMap(map[string]Template)的key鍵是否參數globalCfg.Theme，有則回傳Template(interface)
+	// Tree在template\components\base.go中
+	// Table為Template(interface)的方法，設置TableAttribute(struct也是interface)並回傳
 	return aTemplate().Table()
 }
 
 func aDataTable() types.DataTableAttribute {
+	// aTemplate判斷templateMap(map[string]Template)的key鍵是否參數globalCfg.Theme，有則回傳Template(interface)
+	// Tree在template\components\base.go中
+	// DataTable為Template(interface)的方法，設置DataTableAttribute(struct也是interface)並回傳
 	return aTemplate().DataTable()
 }
 

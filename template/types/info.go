@@ -511,6 +511,7 @@ var JoinFieldValueDelimiter = utils.Uuid(8)
 
 type TabGroups [][]string
 
+// 判斷TabGroups([][]string)是否長度大於0
 func (t TabGroups) Valid() bool {
 	return len(t) > 0
 }

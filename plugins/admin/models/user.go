@@ -109,7 +109,9 @@ func (t UserModel) IsSuperAdmin() bool {
 	return false
 }
 
+// 藉由參數檢查權限，如果有權限回傳第一個參數(path)，反之回傳""
 func (t UserModel) GetCheckPermissionByUrlMethod(path, method string) string {
+	// 檢查權限(藉由url、method)
 	if !t.CheckPermissionByUrlMethod(path, method, url.Values{}) {
 		return ""
 	}

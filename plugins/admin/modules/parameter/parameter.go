@@ -215,6 +215,7 @@ func (param Parameters) WithIsAll(isAll bool) Parameters {
 	return param
 }
 
+// 刪除Parameters.Fields(map[string][]string)[__is_all]
 func (param Parameters) DeleteIsAll() Parameters {
 	delete(param.Fields, IsAll)
 	return param
@@ -289,12 +290,11 @@ func (param Parameters) SetPage(page string) Parameters {
 	return param
 }
 
-// 取得url.Values後加入__page(鍵)與值，最後編碼並回傳
+// 取得url.Values(map[string][]string)後加入__page(鍵)與值s，最後編碼並回傳
 func (param Parameters) GetRouteParamStr() string {
 	// GetFixedParamStr將Parameters(struct)的鍵與值加入至url.Values並回傳
 	p := param.GetFixedParamStr()
 	p.Add(Page, param.Page)
-
 	return "?" + p.Encode()
 }
 
@@ -332,7 +332,7 @@ func (param Parameters) GetNextPageRouteParamStr() string {
 	return "?" + p.Encode()
 }
 
-// 將Parameters(struct)的鍵與值加入至url.Values並回傳
+// 將Parameters(struct)的鍵與值加入至url.Values(map[string][]string)並回傳
 func (param Parameters) GetFixedParamStr() url.Values {
 	p := url.Values{}
 	p.Add(Sort, param.SortField)
@@ -359,14 +359,17 @@ func (param Parameters) GetFixedParamStrWithoutColumnsAndPage() string {
 	return "?" + p.Encode()
 }
 
+// 將__pageSize、__go_admin_no_animation_...等資訊加入url.Values(map[string][]string)後編碼回傳
 func (param Parameters) GetFixedParamStrWithoutSort() string {
 	p := url.Values{}
 	p.Add(PageSize, param.PageSize)
 	for key, value := range param.Fields {
 		p[key] = value
 	}
+	// NoAnimationKey = __go_admin_no_animation_
 	p.Add(form.NoAnimationKey, "true")
 	if len(param.Columns) > 0 {
+		// Columns = __columns
 		p.Add(Columns, strings.Join(param.Columns, ","))
 	}
 	return "&" + p.Encode()

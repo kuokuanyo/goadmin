@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"fmt"
 	tmpl "html/template"
 	"mime/multipart"
 	"regexp"
@@ -109,6 +110,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 	previous := ctx.FormValue(form.PreviousKey)
 
 	// 取得url中__prefix的值
+	// prefix = manager、roles、permission
 	panel, prefix := g.table(ctx)
 
 	// GetEditable回傳BaseTable.Editable(是否可以編輯)
@@ -147,7 +149,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		// GetRouteParamStr取得url.Values後加入__page(鍵)與值，最後編碼並回傳
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
 	}
-
+	fmt.Println(previous)
 	// 取得在multipart/form-data所設定的參數(struct)
 	multiForm := ctx.Request.MultipartForm
 
@@ -167,7 +169,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		Prefix:    prefix,                          // manage or roles or permissions
 		Param:     param.WithPKs(id),               // 將參數(id)結合並設置至Parameters.Fields["__pk"]後回傳
 		Path:      strings.Split(previous, "?")[0], // ex:/admin/info/manager(roles or permissions)
-		MultiForm: multiForm,                       // 取得在multipart/form-data所設定的參數
+		MultiForm: multiForm,                       // 在multipart/form-data所設定的參數
 		// constant.IframeKey = __goadmin_iframe
 		IsIframe: form.Values(values).Get(constant.IframeKey) == "true", // ex:false
 		// constant.IframeIDKey = __goadmin_iframe_id
