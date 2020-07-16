@@ -224,7 +224,9 @@ func isEditUrl(s string, p string) bool {
 	return reg.MatchString(s)
 }
 
+// 將參數h.services.Get(auth.TokenServiceKey)轉換成TokenService(struct)類別後回傳
 func (h *Handler) authSrv() *auth.TokenService {
+	// 將參數h.services.Get(auth.TokenServiceKey)轉換成TokenService(struct)類別後回傳
 	return auth.GetTokenService(h.services.Get(auth.TokenServiceKey))
 }
 
@@ -441,7 +443,7 @@ func filterFormFooter(infoUrl string) template2.HTML {
 	return col1 + col2
 }
 
-// 回傳表單的HTML語法(class="box box-")
+// 尋找{{define "box"}}，將form.GetContent()設置至body以及設置header...等資訊
 func formContent(form types.FormAttribute, isTab, iframe, isHideBack bool, header template2.HTML) template2.HTML {
 
 	if isTab {
@@ -475,13 +477,19 @@ func formContent(form types.FormAttribute, isTab, iframe, isHideBack bool, heade
 		SetStyle(" ").
 		SetIframeStyle(iframe).
 		SetBody(form.GetContent()).
+		// GetContent先依判斷條件設置BoxAttribute.Style
+		// 首先將符合TreeAttribute.TemplateList["components/box"](map[string]string)的值加入text(string)
 		GetContent()
 }
 
+// detail頁面語法
+// 將符合BoxAttribute.TemplateList["box"](map[string]string)的值加入text(string)，最後將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML
 func detailContent(form types.FormAttribute, editUrl, deleteUrl string, iframe bool) template2.HTML {
 	return aBox().
+		// GetDetailBoxHeader(取得細節的BoxHeader)將編輯及刪除按鈕的HTML語法處理後加入class="box-title的HTML語法中
 		SetHeader(form.GetDetailBoxHeader(editUrl, deleteUrl)).
 		WithHeadBorder().
+		// 將表單欄位資訊設置至body
 		SetBody(form.GetContent()).
 		SetIframeStyle(iframe).
 		GetContent()

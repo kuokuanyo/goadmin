@@ -162,9 +162,9 @@ func (db *Mysql) QueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]m
 }
 
 // ExecWithTx is exec method within the transaction.
-// QueryWithTx是transaction的執行方法
+// QueryWithTx是transaction的執行方法(與CommonExec一樣)
 func (db *Mysql) ExecWithTx(tx *sql.Tx, query string, args ...interface{}) (sql.Result, error) {
 	// 在performer.go中
-	// 與CommonExec一樣
+	// 與CommonExec一樣(差別在tx執行)
 	return CommonExecWithTx(tx, query, args...)
 }

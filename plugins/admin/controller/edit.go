@@ -23,26 +23,47 @@ import (
 
 // ShowForm show form page.
 func (h *Handler) ShowForm(ctx *context.Context) {
+	// 取得Context.UserValue[show_form_param]的值並轉換成DeleteParam(struct)
 	param := guard.GetShowFormParam(ctx)
+
+	// param.Prefix = manager、roles、permission
+	// param.Param的資訊有最大顯示資料數、排列順序、依照什麼欄位排序、選擇顯示欄位....等
 	h.showForm(ctx, "", param.Prefix, param.Param, false)
 }
 
+// 首先透過id取得資料表中的資料，接著對有帶值的欄位更新並加入FormFields，設置需要用到的url(返回、保存...等按鍵)
+// 最後匯出HTML語法
 func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix string, param parameter.Parameters, isEdit bool, animation ...bool) {
-
+	// BaseTable也屬於Table(interface)
+	// 先透過參數prefix取得Table(interface)，接著判斷條件後將[]context.Node加入至Handler.operations後回傳
 	panel := h.table(prefix, ctx)
-
+	// 透過參數ctx回傳目前登入的用戶(Context.UserValue["user"])並轉換成UserModel
 	user := auth.Auth(ctx)
 
+	// 取得url.Values(map[string][]string)後加入__page(鍵)與值s，最後編碼並回傳
+	// ex: ?__goadmin_edit_pk=26&__page=1&__pageSize=10&__pk=26&__sort=id&__sort_type=desc
 	paramStr := param.GetRouteParamStr()
 
+	// AorEmpty判斷第一個(condition)參數，如果true則回傳第二個參數，否則回傳""
+	// routePathWithPrefix透過參數name取得該路徑名稱的URL，將url中的:__prefix改成第二個參數(prefix)
+	// ex: /admin/info/manager/new?__goadmin_edit_pk=26&__page=1&__pageSize=10&__pk=26&__sort=id&__sort_type=desc
+	// 新增資料頁面
 	newUrl := modules.AorEmpty(panel.GetCanAdd(), h.routePathWithPrefix("show_new", prefix)+paramStr)
+
 	footerKind := "edit"
+	// CheckPermissionByUrlMethod檢查權限(藉由url、method)
+	// 如果沒有新增資料權限，則為"edit_only"
 	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("show_new").Method(), url.Values{}) {
 		footerKind = "edit_only"
 	}
 
+	// GetDataWithId(透過id取得資料)透過id取得資料表中的資料，接著對有帶值的欄位更新並加入FormFields後回傳，最後設置值至FormInfo(struct)中
+	// formInfo欄位資訊包含資料數值
 	formInfo, err := panel.GetDataWithId(param)
 
+	// DeletePK刪除Parameters.Fields[__pk]後回傳
+	// GetRouteParamStr取得url.Values(map[string][]string)後加入__page(鍵)與值s，最後編碼並回傳
+	// ex:/admin/info/manager/edit?__goadmin_edit_pk=26&__page=1&__pageSize=10&__sort=id&__sort_type=desc(編輯頁面)
 	showEditUrl := h.routePathWithPrefix("show_edit", prefix) + param.DeletePK().GetRouteParamStr()
 
 	if err != nil {
@@ -58,52 +79,66 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 		return
 	}
 
+	// EditPKKey = __goadmin_edit_pk
+	// 刪除Parameters.Fields[參數(__goadmin_edit_pk)]後回傳
+	// GetRouteParamStr取得url.Values(map[string][]string)後加入__page(鍵)與值s，最後編碼並回傳
+	// ex: /admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc(顯示所有資料頁面)
 	infoUrl := h.routePathWithPrefix("info", prefix) + param.DeleteField(constant.EditPKKey).GetRouteParamStr()
+	// ex: /admin/edit/manager(編輯功能(post))
 	editUrl := h.routePathWithPrefix("edit", prefix)
 
+	// ex: http://localhost:9033/admin/info/manager(標頭中)
 	referer := ctx.Headers("Referer")
-
 	if referer != "" && !isInfoUrl(referer) && !isEditUrl(referer, ctx.Query(constant.PrefixKey)) {
 		infoUrl = referer
 	}
 
+	// 將參數值(BaseTable.PrimaryKey)的值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳FormPanel(struct)
+	// f為所有欄位資訊...等資訊
 	f := panel.GetForm()
 
-	isNotIframe := ctx.Query(constant.IframeKey) != "true"
+	// 如果url沒設置__goadmin_iframe則為空值
+	isNotIframe := ctx.Query(constant.IframeKey) != "true" // ex: true
 
+	// 隱藏資訊(__go_admin_t_、__go_admin_previous_)
 	hiddenFields := map[string]string{
 		form2.TokenKey:    h.authSrv().AddToken(),
 		form2.PreviousKey: infoUrl,
 	}
 
+	// 如果url沒設置則都為空
+	// IframeKey = __goadmin_iframe
 	if ctx.Query(constant.IframeKey) != "" {
 		hiddenFields[constant.IframeKey] = ctx.Query(constant.IframeKey)
 	}
-
+	// IframeIDKey = __goadmin_iframe_id
 	if ctx.Query(constant.IframeIDKey) != "" {
 		hiddenFields[constant.IframeIDKey] = ctx.Query(constant.IframeIDKey)
 	}
 
+	// formContent尋找{{define "box"}}，將form.GetContent()設置至body以及設置header...等資訊
+	// 先將表單資訊設置後，尋找{{define "box"}}將表單包起來
 	content := formContent(aForm().
-		SetContent(formInfo.FieldList).
-		SetFieldsHTML(f.HTMLContent).
-		SetTabContents(formInfo.GroupFieldList).
-		SetTabHeaders(formInfo.GroupFieldHeaders).
-		SetPrefix(h.config.PrefixFixSlash()).
-		SetInputWidth(f.InputWidth).
-		SetHeadWidth(f.HeadWidth).
-		SetPrimaryKey(panel.GetPrimaryKey().Name).
+		SetContent(formInfo.FieldList).            // 將欄位資訊及數值設置至表單的content
+		SetFieldsHTML(f.HTMLContent).              // ex:""
+		SetTabContents(formInfo.GroupFieldList).   // ex:[]
+		SetTabHeaders(formInfo.GroupFieldHeaders). // ex:[]
+		SetPrefix(h.config.PrefixFixSlash()).      // ex:/admin
+		SetInputWidth(f.InputWidth).               // ex:0
+		SetHeadWidth(f.HeadWidth).                 // ex:0
+		SetPrimaryKey(panel.GetPrimaryKey().Name). // ex:id
 		SetUrl(editUrl).
 		SetAjax(f.AjaxSuccessJS, f.AjaxErrorJS).
-		SetLayout(f.Layout).
-		SetHiddenFields(hiddenFields).
+		SetLayout(f.Layout).           // ex:LayoutDefault
+		SetHiddenFields(hiddenFields). // 隱藏資訊(__go_admin_t_、__go_admin_previous_)
 		SetOperationFooter(formFooter(footerKind,
-			f.IsHideContinueEditCheckBox,
-			f.IsHideContinueNewCheckBox,
-			f.IsHideResetButton)).
-		SetHeader(f.HeaderHtml).
+						f.IsHideContinueEditCheckBox,
+						f.IsHideContinueNewCheckBox,
+						f.IsHideResetButton)).
+		SetHeader(f.HeaderHtml). // ex:HeaderHtml、FooterHtml為[]
 		SetFooter(f.FooterHtml), len(formInfo.GroupFieldHeaders) > 0, !isNotIframe, f.IsHideBackButton, f.Header)
 
+	// 一般不會執行
 	if f.Wrapper != nil {
 		content = f.Wrapper(content)
 	}
@@ -114,6 +149,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 		Title:       modules.AorBHTML(isNotIframe, template2.HTML(formInfo.Title), ""),
 	}, alert == "" || ((len(animation) > 0) && animation[0]))
 
+	// 一般不會執行
 	if isEdit {
 		ctx.AddHeader(constant.PjaxUrlHeader, showEditUrl)
 	}
@@ -144,6 +180,7 @@ func (h *Handler) EditForm(ctx *context.Context) {
 	// 將參數值(BaseTable.PrimaryKey)的值設置至BaseTable.Form(FormPanel(struct)).primaryKey中後回傳FormPanel(struct)
 	// field為編輯頁面每一欄位的資訊FormField(struct)
 	for _, field := range param.Panel.GetForm().FieldList {
+
 		// FormField.FormType為表單型態，ex: select、text、file
 		if field.FormType == form.File &&
 			len(param.MultiForm.File[field.Field]) == 0 &&

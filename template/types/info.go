@@ -843,6 +843,7 @@ func (i *InfoPanel) ExportValue() *InfoPanel {
 	return i
 }
 
+// 是否輸出值
 func (i *InfoPanel) IsExportValue() bool {
 	return i.ExportType == 1
 }
@@ -1395,6 +1396,7 @@ func (i *InfoPanel) GetPageSizeList() []string {
 	return pageSizeList
 }
 
+// 判斷資料是升冪或降冪
 func (i *InfoPanel) GetSort() string {
 	switch i.Sort {
 	case SortAsc:

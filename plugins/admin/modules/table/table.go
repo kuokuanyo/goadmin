@@ -90,13 +90,14 @@ type BaseTable struct {
 	PrimaryKey     PrimaryKey
 }
 
-// 將參數值設置至base.Info(InfoPanel(struct)).primaryKey中後回傳
+// 將參數值設置至base.Info(InfoPanel(struct)).primaryKey中後回傳InfoPanel(struct)
 func (base *BaseTable) GetInfo() *types.InfoPanel {
 	// 在template\types\info.go中
 	// 將參數值設置至InfoPanel(struct).primaryKey中後回傳
 	return base.Info.SetPrimaryKey(base.PrimaryKey.Name, base.PrimaryKey.Type)
 }
 
+// 將參數值設置至base.Detail(InfoPanel(struct)).primaryKey中後回傳InfoPanel(struct)
 func (base *BaseTable) GetDetail() *types.InfoPanel {
 	return base.Detail.SetPrimaryKey(base.PrimaryKey.Name, base.PrimaryKey.Type)
 }

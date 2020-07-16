@@ -12,7 +12,10 @@ type DeleteParam struct {
 	Prefix string
 }
 
+// 取得參數取得multipart/form-data的id值後將值設置至Context.UserValue[delete_param]
 func (g *Guard) Delete(ctx *context.Context) {
+	// 取得url中__prefix的值
+	// prefix = manager、roles、permission
 	panel, prefix := g.table(ctx)
 	if !panel.GetDeletable() {
 		alert(ctx, panel, errors.OperationNotAllow, g.conn, g.navBtns)
@@ -20,13 +23,15 @@ func (g *Guard) Delete(ctx *context.Context) {
 		return
 	}
 
+	// 取得參數取得multipart/form-data的id值
 	id := ctx.FormValue("id")
 	if id == "" {
 		alert(ctx, panel, errors.WrongID, g.conn, g.navBtns)
 		ctx.Abort()
 		return
 	}
-
+	// deleteParamKey = delete_param
+	// 將值設置至Context.UserValue[delete_param]
 	ctx.SetUserValue(deleteParamKey, &DeleteParam{
 		Panel:  panel,
 		Id:     id,
@@ -35,6 +40,7 @@ func (g *Guard) Delete(ctx *context.Context) {
 	ctx.Next()
 }
 
+// 取得Context.UserValue[delete_param]的值並轉換成DeleteParam(struct)
 func GetDeleteParam(ctx *context.Context) *DeleteParam {
 	return ctx.UserValue[deleteParamKey].(*DeleteParam)
 }

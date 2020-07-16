@@ -45,6 +45,7 @@ func InArrayWithoutEmpty(arr []string, str string) bool {
 	return false
 }
 
+// 判斷條件後將s裡的數值(不為空)加入[]string後回傳
 func RemoveBlankFromArray(s []string) []string {
 	var r []string
 	for _, str := range s {
@@ -61,6 +62,7 @@ func Uuid() string {
 	return rst
 }
 
+// 如果第一個參數(source)為空則回傳第二個參數(def)，否則回傳source
 func SetDefault(source, def string) string {
 	if source == "" {
 		return def

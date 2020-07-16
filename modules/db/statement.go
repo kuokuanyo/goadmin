@@ -614,9 +614,12 @@ func (sql *SQL) Exec() (int64, error) {
 }
 
 // Insert exec the insert method of given key/value pairs.
+// 插入給定的參數資料(values(map[string]interface{}))後，最後回傳加入值的id
 func (sql *SQL) Insert(values dialect.H) (int64, error) {
+	// 清空的sql 資訊放入SQLPool中
 	defer RecycleSQL(sql)
 
+	// 新增頁面中設定的數值(ex:map[http_method:GET http_path:s name:ssssssssss slug:ssssssssss])
 	sql.Values = values
 
 	sql.dialect.Insert(&sql.SQLComponent)
@@ -627,6 +630,7 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 		resMap []map[string]interface{}
 	)
 
+	// postgresql引擎才會執行
 	if sql.diver.Name() == DriverPostgresql {
 		if sql.TableName == "goadmin_menu" ||
 			sql.TableName == "goadmin_permissions" ||
@@ -651,14 +655,16 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 	}
 
 	if sql.tx != nil {
+		// QueryWithTx是transaction的執行方法
 		res, err = sql.diver.ExecWithTx(sql.tx, sql.Statement, sql.Args...)
 	} else {
+		// ExecWithConnection有給定連接(conn)名稱
 		res, err = sql.diver.ExecWithConnection(sql.conn, sql.Statement, sql.Args...)
 	}
-
 	if err != nil {
 		return 0, err
 	}
+
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
 		return 0, errors.New("no affect row")
@@ -693,6 +699,7 @@ func (sql *SQL) clean() {
 }
 
 // RecycleSQL clear the SQL and put into the pool.
+// 清空的sql 資訊放入SQLPool中
 func RecycleSQL(sql *SQL) {
 
 	//sql.dialect.SQLComponent.Statement

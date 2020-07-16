@@ -201,6 +201,7 @@ func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[strin
 }
 
 // GetDataWithIds query the data set.
+// 透過參數(選擇取得特定id資料)處理sql語法後取得資料表資料並將值設置至PanelInfo(struct)後回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, error) {
 
 	var (
@@ -216,6 +217,9 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 	} else if tb.Info.GetDataFn != nil {
 		data, size = tb.Info.GetDataFn(params)
 	} else {
+		// 透過參數處理sql語法後接著取得資料表資料，判斷條件處理最後將值設置至PanelInfo(struct)並回傳
+		// PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位資訊
+		// ----------大部分匯出資料都執行這動作後return-------------------
 		return tb.getDataFromDatabase(params)
 	}
 
@@ -631,7 +635,7 @@ func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
 }
 
 // GetDataWithId query the single row of data.
-// GetDataWithId(透過id取得資料)透過id取得goadmin_menu資料表中的資料，接著對有帶值的欄位更新並加入FormFields後回傳，最後設置值至FormInfo(struct)中
+// GetDataWithId(透過id取得資料)透過id取得資料表中的資料，接著對有帶值的欄位更新並加入FormFields後回傳，最後設置值至FormInfo(struct)中
 func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, error) {
 
 	var (
@@ -882,6 +886,7 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 }
 
 // InsertData insert data.
+// 處理dataList(為multipart/form-data設定數值)後將資料加入資料表中
 func (tb *DefaultTable) InsertData(dataList form.Values) error {
 
 	// __go_admin_post_type = PostTypeKey
@@ -947,6 +952,8 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 	// --------------新增權限頁面才會執行下面動作，用戶及角色在上面動作已經return------------
 	// Table將SQL(struct)資訊清除後將參數設置至SQL.TableName回傳
 	// dataList除了設定的參數還有__go_admin_post_type:[1]
+	// getInjectValueFromFormValue(從表單取得插入值)處理後取得新增頁面的數值回傳(ex:map[http_method:GET http_path:s name:ssssssssss slug:ssssssssss])
+	// Insert插入給定的參數資料(values(map[string]interface{}))後，最後回傳加入值的id
 	id, err = tb.sql().Table(tb.Form.Table).Insert(tb.getInjectValueFromFormValue(dataList, types.PostTypeCreate))
 
 	// NOTE: some errors should be ignored.
@@ -958,12 +965,16 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 	return nil
 }
 
+// getInjectValueFromFormValue(從表單取得插入值)處理後取得新增頁面的數值回傳(ex:map[http_method:GET http_path:s name:ssssssssss slug:ssssssssss])
+// --------------新增權限頁面會執行----------------
 func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ types.PostType) dialect.H {
 
 	var (
 		value        = make(dialect.H)
 		exceptString = make([]string, 0)
 
+		// columns為資料表所有欄位
+		// auto判斷是否有自動遞增(主鍵)的欄位
 		columns, auto = tb.getColumns(tb.Form.Table)
 
 		fun types.PostFieldFilterFn
@@ -971,6 +982,8 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 
 	// If a key is a auto increment primary key, it can`t be insert or update.
 	if auto {
+		// PreviousKey = __go_admin_previous_， MethodKey = __go_admin_method_, TokenKey = __go_admin_t_
+		// IframeKey = __goadmin_iframe, IframeIDKey = __goadmin_iframe_id
 		exceptString = []string{tb.PrimaryKey.Name, form.PreviousKey, form.MethodKey, form.TokenKey,
 			constant.IframeKey, constant.IframeIDKey}
 	} else {
@@ -978,8 +991,12 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 			constant.IframeKey, constant.IframeIDKey}
 	}
 
+	// IsSingleUpdatePost(是否是單個執行更新post)
+	// ---------權限頁面執行新建動作會執行----------
 	if !dataList.IsSingleUpdatePost() {
+		// field為頁面顯示的所有欄位資訊(ex:/admin/info/permission的欄位資訊)
 		for _, field := range tb.Form.FieldList {
+			// 該欄位是否有多個選擇(ex: 權限的http_method欄位)
 			if field.FormType.IsMultiSelect() {
 				if _, ok := dataList[field.Field+"[]"]; !ok {
 					dataList[field.Field+"[]"] = []string{""}
@@ -988,20 +1005,35 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 		}
 	}
 
+	// RemoveRemark刪除__go_admin_post_type與__go_admin_is_single_update的鍵與值後回傳map[string][]string
 	dataList = dataList.RemoveRemark()
 
+	// datalist為multipart/form-data設定的數值
 	for k, v := range dataList {
+		// 將名稱裡有[]取代成""(ex:http_method[]變成http_method)
 		k = strings.Replace(k, "[]", "", -1)
+
+		// 如果不存在exceptString及columns中會執行(ex:權限的name、slug、http_method、http_path)
+		// 取得新增資料的欄位資訊
 		if !modules.InArray(exceptString, k) {
 			if modules.InArray(columns, k) {
+				// FindByFieldName判斷FormFields[i].Field是否存在參數field，存在則回傳FormFields[i](FormField)
+				// 取得欄位資訊(只取得新增資料頁面的欄位資訊)
 				field := tb.Form.FieldList.FindByFieldName(k)
+
 				delimiter := ","
 				if field != nil {
 					fun = field.PostFilterFn
-					delimiter = modules.SetDefault(field.DefaultOptionDelimiter, ",")
+					// SetDefault如果第一個參數(source)為空則回傳第二個參數(def)，否則回傳source
+					delimiter = modules.SetDefault(field.DefaultOptionDelimiter, ",") // ex: ,
 				}
+
+				// RemoveBlankFromArray判斷條件後將s裡的數值(不為空)加入[]string後回傳
 				vv := modules.RemoveBlankFromArray(v)
+
 				if fun != nil {
+					// 新增權限的http_method、http_path欄位執行
+					// 將表單輸入的值加入dialect.H(map[string]interface{})
 					value[k] = fun(types.PostFieldModel{
 						ID:       dataList.Get(tb.PrimaryKey.Name),
 						Value:    vv,
@@ -1009,6 +1041,8 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 						PostType: typ,
 					})
 				} else {
+					// 將表單輸入的值加入dialect.H(map[string]interface{})
+					// 新增權限頁面的name、slug欄位執行
 					if len(vv) > 1 {
 						value[k] = strings.Join(vv, delimiter)
 					} else if len(vv) > 0 {
@@ -1018,6 +1052,7 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 					}
 				}
 			} else {
+				// FindByFieldName判斷FormFields[i].Field是否存在參數field，存在則回傳FormFields[i](FormField)
 				field := tb.Form.FieldList.FindByFieldName(k)
 				if field != nil && field.PostFilterFn != nil {
 					field.PostFilterFn(types.PostFieldModel{

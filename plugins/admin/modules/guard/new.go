@@ -22,8 +22,10 @@ type ShowNewFormParam struct {
 	Param  parameter.Parameters
 }
 
+// 將值設置至Context.UserValue[show_new_form_param]
 func (g *Guard) ShowNewForm(ctx *context.Context) {
-
+	// 取得url中__prefix的值
+	// prefix = manager、roles、permission
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetCanAdd() {
@@ -50,6 +52,7 @@ func (g *Guard) ShowNewForm(ctx *context.Context) {
 		return
 	}
 
+	// showNewFormParam = show_new_form_param
 	ctx.SetUserValue(showNewFormParam, &ShowNewFormParam{
 		Panel:  panel,
 		Prefix: prefix,
@@ -59,6 +62,7 @@ func (g *Guard) ShowNewForm(ctx *context.Context) {
 	ctx.Next()
 }
 
+// 取得Context.UserValue[show_new_form_param]的值並轉換成ShowNewFormParam(struct)
 func GetShowNewFormParam(ctx *context.Context) *ShowNewFormParam {
 	return ctx.UserValue[showNewFormParam].(*ShowNewFormParam)
 }
@@ -135,13 +139,13 @@ func (g *Guard) NewForm(ctx *context.Context) {
 	ctx.SetUserValue(newFormParamKey, &NewFormParam{
 		Panel:        panel,
 		Id:           "",
-		Prefix:       prefix, // manage or roles or permissions
-		Param:        param,  // 頁面size、資料排列方式、選擇欄位...等資訊
+		Prefix:       prefix,                                                // manage or roles or permissions
+		Param:        param,                                                 // 頁面size、資料排列方式、選擇欄位...等資訊
 		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true", // ex:false
-		IframeID:     form.Values(values).Get(constant.IframeIDKey), // ex:空
-		Path:         strings.Split(previous, "?")[0], // ex:/admin/info/manager(roles or permissions)
-		MultiForm:    ctx.Request.MultipartForm,       // 在multipart/form-data所設定的參數
-		PreviousPath: previous,                        // ex: /admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
+		IframeID:     form.Values(values).Get(constant.IframeIDKey),         // ex:空
+		Path:         strings.Split(previous, "?")[0],                       // ex:/admin/info/manager(roles or permissions)
+		MultiForm:    ctx.Request.MultipartForm,                             // 在multipart/form-data所設定的參數
+		PreviousPath: previous,                                              // ex: /admin/info/manager?__page=1&__pageSize=10&__sort=id&__sort_type=desc
 		FromList:     fromList,
 	})
 	ctx.Next()

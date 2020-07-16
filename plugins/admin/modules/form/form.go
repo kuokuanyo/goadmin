@@ -103,8 +103,11 @@ func (f Values) IsSingleUpdatePost() bool {
 }
 
 // RemoveRemark removes the PostType and IsSingleUpdate flag parameters.
+// 刪除__go_admin_post_type與__go_admin_is_single_update的鍵與值後回傳map[string][]string
 func (f Values) RemoveRemark() Values {
+	// PostTypeKey = __go_admin_post_type
 	f.Delete(PostTypeKey)
+	// PostIsSingleUpdateKey = __go_admin_is_single_update
 	f.Delete(PostIsSingleUpdateKey)
 	return f
 }

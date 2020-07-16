@@ -243,6 +243,7 @@ func (param Parameters) AddField(field, value string) Parameters {
 	return param
 }
 
+// 刪除Parameters.Fields[參數]後回傳
 func (param Parameters) DeleteField(field string) Parameters {
 	delete(param.Fields, field)
 	return param
@@ -255,7 +256,9 @@ func (param Parameters) DeleteEditPk() Parameters {
 	return param
 }
 
+// 刪除Parameters.Fields[__goadmin_detail_pk]後回傳
 func (param Parameters) DeleteDetailPk() Parameters {
+	// __goadmin_detail_pk
 	delete(param.Fields, constant.DetailPKKey)
 	return param
 }

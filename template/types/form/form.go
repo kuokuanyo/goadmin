@@ -318,7 +318,7 @@ func (t Type) IsSingleSelect() bool {
 	return t == SelectSingle || t == Radio || t == Switch || t == CheckboxSingle
 }
 
-// 判斷t(unit8)是否符合條件
+// 判斷t(unit8)是否符合條件，是否有多個選擇
 func (t Type) IsMultiSelect() bool {
 	// Select = 3
 	// SelectBox = 5

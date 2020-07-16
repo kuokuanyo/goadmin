@@ -105,8 +105,17 @@ func (admin *Admin) initRouter() *Admin {
 	authPrefixRoute := route.Group("/", auth.Middleware(admin.Conn), admin.guardian.CheckPrefix)
 
 	// add delete modify query
+	// 首先取得所有欄位的資訊，接著設置按鈕的url，透過id取得資料表中的資料，接著對有帶值的欄位更新並加入FormFields
+	// 最後匯出HTML語法
 	authPrefixRoute.GET("/info/:__prefix/detail", admin.handler.ShowDetail).Name("detail")
+
+	// 取得參數取得multipart/form-data的__goadmin_edit_pk(id)值後將值設置至Context.UserValue[show_form_param]
+	// 首先透過id取得資料表中的資料，接著對有帶值的欄位更新並加入FormFields，設置需要用到的url(返回、保存...等按鍵)
+	// 最後匯出HTML語法
 	authPrefixRoute.GET("/info/:__prefix/edit", admin.guardian.ShowForm, admin.handler.ShowForm).Name("show_edit")
+
+	// 首先取得用戶資料、權限等資訊，接著取得新建資料頁面所有的欄位資訊
+	// 設置需要用到的url(返回、保存、繼續新增...等按鍵)，最後匯出HTML語法
 	authPrefixRoute.GET("/info/:__prefix/new", admin.guardian.ShowNewForm, admin.handler.ShowNewForm).Name("show_new")
 
 	// EditForm(編輯表單)編輯用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
@@ -118,32 +127,40 @@ func (admin *Admin) initRouter() *Admin {
 
 	// NewForm(新增表單)新增用戶、角色、權限等表單資訊，首先取得multipart/form-data設定的參數值並驗證token是否正確
 	// 接著取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)，最後設定Context.UserValue並執行新增表單的動作
+	// 首先處理multipart/form-data設定數值後將資料加入資料表中，接著處理sql語法後接著取得資料表資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo為頁面上所有的資料
+	// 最後將所有頁面的HTML處理並回傳(包括標頭、過濾條件、所有顯示的資料)
 	authPrefixRoute.POST("/new/:__prefix", admin.guardian.NewForm, admin.handler.NewForm).Name("new")
-	
+
+	// 取得參數取得multipart/form-data的id值後將值設置至Context.UserValue[delete_param]
+	// 透過id刪除資料後回傳code、data(token)、msg
 	authPrefixRoute.POST("/delete/:__prefix", admin.guardian.Delete, admin.handler.Delete).Name("delete")
+
+	// 建立一個excel檔接著取得所有匯出的資料，最後將值加入至excel中
 	authPrefixRoute.POST("/export/:__prefix", admin.guardian.Export, admin.handler.Export).Name("export")
+
 	authPrefixRoute.GET("/info/:__prefix", admin.handler.ShowInfo).Name("info")
 
-	authPrefixRoute.POST("/update/:__prefix", admin.guardian.Update, admin.handler.Update).Name("update")
+	// authPrefixRoute.POST("/update/:__prefix", admin.guardian.Update, admin.handler.Update).Name("update")
 
-	authRoute.GET("/application/info", admin.handler.SystemInfo)
+	// authRoute.GET("/application/info", admin.handler.SystemInfo)
 
 	route.ANY("/operation/:__goadmin_op_id", auth.Middleware(admin.Conn), admin.handler.Operation)
 
-	if config.GetOpenAdminApi() {
-
-		// crud json apis
-		apiRoute := route.Group("/api", auth.Middleware(admin.Conn), admin.guardian.CheckPrefix)
-		apiRoute.GET("/list/:__prefix", admin.handler.ApiList).Name("api_info")
-		apiRoute.GET("/detail/:__prefix", admin.handler.ApiDetail).Name("api_detail")
-		apiRoute.POST("/delete/:__prefix", admin.guardian.Delete, admin.handler.Delete).Name("api_delete")
-		apiRoute.POST("/edit/:__prefix", admin.guardian.EditForm, admin.handler.ApiUpdate).Name("api_edit")
-		apiRoute.GET("/edit/form/:__prefix", admin.guardian.ShowForm, admin.handler.ApiUpdateForm).Name("api_show_edit")
-		apiRoute.POST("/create/:__prefix", admin.guardian.NewForm, admin.handler.ApiCreate).Name("api_new")
-		apiRoute.GET("/create/form/:__prefix", admin.guardian.ShowNewForm, admin.handler.ApiCreateForm).Name("api_show_new")
-		apiRoute.POST("/export/:__prefix", admin.guardian.Export, admin.handler.Export).Name("api_export")
-		apiRoute.POST("/update/:__prefix", admin.guardian.Update, admin.handler.Update).Name("api_update")
-	}
+	// false
+	// 取得open的api
+	// if config.GetOpenAdminApi() {
+	// 	// crud json apis
+	// 	apiRoute := route.Group("/api", auth.Middleware(admin.Conn), admin.guardian.CheckPrefix)
+	// 	apiRoute.GET("/list/:__prefix", admin.handler.ApiList).Name("api_info")
+	// 	apiRoute.GET("/detail/:__prefix", admin.handler.ApiDetail).Name("api_detail")
+	// 	apiRoute.POST("/delete/:__prefix", admin.guardian.Delete, admin.handler.Delete).Name("api_delete")
+	// 	apiRoute.POST("/edit/:__prefix", admin.guardian.EditForm, admin.handler.ApiUpdate).Name("api_edit")
+	// 	apiRoute.GET("/edit/form/:__prefix", admin.guardian.ShowForm, admin.handler.ApiUpdateForm).Name("api_show_edit")
+	// 	apiRoute.POST("/create/:__prefix", admin.guardian.NewForm, admin.handler.ApiCreate).Name("api_new")
+	// 	apiRoute.GET("/create/form/:__prefix", admin.guardian.ShowNewForm, admin.handler.ApiCreateForm).Name("api_show_new")
+	// 	apiRoute.POST("/export/:__prefix", admin.guardian.Export, admin.handler.Export).Name("api_export")
+	// 	apiRoute.POST("/update/:__prefix", admin.guardian.Update, admin.handler.Update).Name("api_update")
+	// }
 
 	admin.App = app
 	return admin

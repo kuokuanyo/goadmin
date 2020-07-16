@@ -118,14 +118,15 @@ func (h *Handler) showTableData(ctx *context.Context, prefix string, params para
 	return panel, panelInfo, []string{editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl, updateUrl}, nil
 }
 
-// 首先透過處理sql語法後接著取得資料表資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo為頁面上所有的資料
+// 首先透過處理sql語法後接著取得資料表資料後，判斷條件後處理並將值設置至PanelInfo(struct)，panelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 // 接著將所有頁面的HTML處理並回傳(包括標頭、過濾條件、所有顯示的資料)
 func (h *Handler) showTable(ctx *context.Context, prefix string, params parameter.Parameters, panel table.Table) *bytes.Buffer {
 
 	// 首先透過處理sql語法後接著取得資料表資料後，判斷條件後處理並將值設置至PanelInfo(struct)，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 	// 最後判斷用戶權限並取得編輯、新增、刪除、輸出...等url資訊儲存至[]string
-	// panelInfo為頁面上所有的資料
+	// panelInfo為頁面上所有的資料...等資料
 	panel, panelInfo, urls, err := h.showTableData(ctx, prefix, params, panel, "")
+
 	if err != nil {
 		return h.Execute(ctx, auth.Auth(ctx), types.Panel{
 			Content: aAlert().SetTitle(errors.MsgWithIcon).
@@ -152,7 +153,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		allBtns    = make(types.Buttons, 0)
 	)
 
-	// 用戶頁面的InfoPanel.Buttons為空
+	// 新增、編輯頁面的InfoPanel.Buttons為空
 	for _, b := range info.Buttons {
 		if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
 			allBtns = append(allBtns, b)
@@ -258,6 +259,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 	} else {
 		// aDataTable在plugins\admin\controller\show.go
 		// 將參數值設置至DataAttribute(struct)
+		// ---------新增、編輯頁面都執行-------------
 		dataTable = aDataTable().
 			SetInfoList(panelInfo.InfoList).                 // panelInfo.InfoList為頁面上所有取得的資料數值
 			SetInfoUrl(infoUrl).                             // ex: /admin/info/manager(用戶)
@@ -329,11 +331,9 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 				GetContent())
 	}
 
-
 	// 接著將符合TreeAttribute.TemplateList["components/box"](map[string]string)的值加入text(string)
 	// 最後將參數compo寫入buffer(bytes.Buffer)中最後輸出HTML
 	content := boxModel.GetContent()
-
 
 	// ------------用戶介面不會執行------------------
 	if info.Wrapper != nil {
@@ -393,15 +393,25 @@ func (h *Handler) Assets(ctx *context.Context) {
 }
 
 // Export export table rows as excel object.
+// 建立一個excel檔接著取得所有匯出的資料，最後將值加入至excel中
 func (h *Handler) Export(ctx *context.Context) {
+	// 取得Context.UserValue[export_param]的值並轉換成ExportParam(struct)
 	param := guard.GetExportParam(ctx)
 
 	tableName := "Sheet1"
+	// PrefixKey = __prefix
+	// prefix = manager、roles、permission
 	prefix := ctx.Query(constant.PrefixKey)
+
+	// BaseTable也屬於Table(interface)
+	// 先透過參數prefix取得Table(interface)，接著判斷條件後將[]context.Node加入至Handler.operations後回傳
 	panel := h.table(prefix, ctx)
 
+	// 創建一個file
 	f := excelize.NewFile()
+	// 新增一個sheet名為Sheet1
 	index := f.NewSheet(tableName)
+	// 設定一個預設的工作表(sheet)
 	f.SetActiveSheet(index)
 
 	// TODO: support any numbers of fields.
@@ -409,31 +419,45 @@ func (h *Handler) Export(ctx *context.Context) {
 		"L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
 
 	var (
-		infoData  table.PanelInfo
-		fileName  string
-		err       error
+		infoData table.PanelInfo
+		fileName string
+		err      error
+		// 將參數值設置至base.Info(InfoPanel(struct)).primaryKey中後回傳InfoPanel(struct)
 		tableInfo = panel.GetInfo()
 	)
 
+	// 判斷是否有選擇匯出特定資料，如選擇當頁或全部(則Id為空)
 	if len(param.Id) == 0 {
+		// GetParam取得頁面size、資料排列方式、選擇欄位...等資訊後設置至Parameters(struct)並回傳
 		params := parameter.GetParam(ctx.Request.URL, tableInfo.DefaultPageSize, tableInfo.SortField,
 			tableInfo.GetSort())
+
+		// 透過參數處理sql語法後取得資料表資料並將值設置至PanelInfo(struct)後回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 		infoData, err = panel.GetData(params.WithIsAll(param.IsAll))
+
+		// ex: 权限管理-1594877943-page-1-pageSize-10.xlsx
 		fileName = fmt.Sprintf("%s-%d-page-%s-pageSize-%s.xlsx", tableInfo.Title, time.Now().Unix(),
 			params.Page, params.PageSize)
 	} else {
+		// 選擇匯出特定資料
+		// 透過參數(選擇取得特定id資料)處理sql語法後取得資料表資料並將值設置至PanelInfo(struct)後回傳，PanelInfo裡的資訊有主題、描述名稱、可以篩選條件的欄位、選擇顯示的欄位....等資訊
 		infoData, err = panel.GetDataWithIds(parameter.GetParam(ctx.Request.URL,
+			// WithPKs將參數(多個string)結合並設置至Parameters.Fields["__pk"]後回傳
 			tableInfo.DefaultPageSize, tableInfo.SortField, tableInfo.GetSort()).WithPKs(param.Id...))
+
+		// ex:权限管理-1594876892-id-40_39_38.xlsx
 		fileName = fmt.Sprintf("%s-%d-id-%s.xlsx", tableInfo.Title, time.Now().Unix(), strings.Join(param.Id, "_"))
 	}
-
 	if err != nil {
 		response.Error(ctx, "export error")
 		return
 	}
 
 	columnIndex := 0
+	// PanelInfo.Thead為頁面中所有的欄位資訊
 	for _, head := range infoData.Thead {
+		// 如果不隱藏欄位則執行
+		// 將欄位名稱設置至excel
 		if !head.Hide {
 			f.SetCellValue(tableName, orders[columnIndex]+"1", head.Head)
 			columnIndex++
@@ -441,9 +465,12 @@ func (h *Handler) Export(ctx *context.Context) {
 	}
 
 	count := 2
+	// PanelInfo.InfoList為所有取得的資料
 	for _, info := range infoData.InfoList {
 		columnIndex = 0
 		for _, head := range infoData.Thead {
+			// 如果不隱藏欄位則執行
+			// 將數值設置至excel
 			if !head.Hide {
 				if tableInfo.IsExportValue() {
 					f.SetCellValue(tableName, orders[columnIndex]+strconv.Itoa(count), info[head.Field].Value)

@@ -29,8 +29,10 @@ type ShowFormParam struct {
 	Param  parameter.Parameters
 }
 
+// 取得參數取得multipart/form-data的__goadmin_edit_pk(id)值後將值設置至Context.UserValue[show_form_param]
 func (g *Guard) ShowForm(ctx *context.Context) {
-
+	// 取得url中__prefix的值
+	// prefix = manager、roles、permission
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetEditable() {
@@ -57,6 +59,8 @@ func (g *Guard) ShowForm(ctx *context.Context) {
 		return
 	}
 
+	// EditPKKey = __goadmin_edit_pk
+	// 取得參數取得multipart/form-data的__goadmin_edit_pk(id)值
 	id := ctx.Query(constant.EditPKKey)
 	if id == "" && prefix != "site" {
 		alert(ctx, panel, errors.WrongPK(panel.GetPrimaryKey().Name), g.conn, g.navBtns)
@@ -67,6 +71,7 @@ func (g *Guard) ShowForm(ctx *context.Context) {
 		id = "1"
 	}
 
+	// showFormParamKey = show_form_param
 	ctx.SetUserValue(showFormParamKey, &ShowFormParam{
 		Panel:  panel,
 		Id:     id,
